@@ -25,6 +25,11 @@ interface SiteContent {
   player_of_season: string;
   player_of_tournament: string;
   tournament_date: string;
+  last_tournament_stats: string;
+  about_title: string;
+  about_description: string;
+  facebook_url: string;
+  discord_url: string;
 }
 
 interface Player {
@@ -81,6 +86,11 @@ const Admin = () => {
     player_of_season: "",
     player_of_tournament: "",
     tournament_date: "",
+    last_tournament_stats: "",
+    about_title: "",
+    about_description: "",
+    facebook_url: "",
+    discord_url: "",
   });
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -96,8 +106,8 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      loadContent();
-      loadPlayers();
+      void loadContent();
+      void loadPlayers();
     }
   }, [isAdmin]);
 
@@ -109,7 +119,7 @@ const Admin = () => {
   const loadContent = async () => {
     const { data } = await supabase.from("site_content").select("key, content");
     if (data) {
-      const contentMap = data.reduce((acc, item) => ({ ...acc, [item.key]: item.content }), {} as SiteContent);
+      const contentMap = data.reduce((acc, item) => ({ ...acc, [item.key]: item.content }), {} as Partial<SiteContent>);
       setContent((prev) => ({ ...prev, ...contentMap }));
     }
   };
@@ -137,9 +147,7 @@ const Admin = () => {
     setSaving(true);
     try {
       for (const [key, value] of Object.entries(content)) {
-        const { error } = await supabase
-          .from("site_content")
-          .upsert({ key, content: value }, { onConflict: "key" });
+        const { error } = await supabase.from("site_content").upsert({ key, content: value }, { onConflict: "key" });
         if (error) throw error;
       }
       toast.success("Content saved");
@@ -171,12 +179,10 @@ const Admin = () => {
         },
       };
 
-      const { error } = await supabase
-        .from("player_stats")
-        .upsert(playerToSave, { onConflict: "player_id" });
+      const { error } = await supabase.from("player_stats").upsert(playerToSave, { onConflict: "id" });
       if (error) throw error;
       toast.success("Player saved");
-      loadPlayers();
+      void loadPlayers();
     } catch (error) {
       toast.error("Failed to save player");
     } finally {
@@ -190,14 +196,12 @@ const Admin = () => {
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${selectedPlayer.player_id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from("site-assets")
-        .upload(`players/${fileName}`, file);
+      const { error: uploadError } = await supabase.storage.from("site-assets").upload(`players/${fileName}`, file);
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("site-assets")
-        .getPublicUrl(`players/${fileName}`);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("site-assets").getPublicUrl(`players/${fileName}`);
 
       setSelectedPlayer({ ...selectedPlayer, image_url: publicUrl });
       toast.success("Image uploaded");
@@ -225,24 +229,15 @@ const Admin = () => {
           <div className="space-y-4">
             <div>
               <Label>Hero Title</Label>
-              <Input
-                value={content.hero_title}
-                onChange={(e) => setContent({ ...content, hero_title: e.target.value })}
-              />
+              <Input value={content.hero_title} onChange={(e) => setContent({ ...content, hero_title: e.target.value })} />
             </div>
             <div>
               <Label>Hero Tagline</Label>
-              <Input
-                value={content.hero_tagline}
-                onChange={(e) => setContent({ ...content, hero_tagline: e.target.value })}
-              />
+              <Input value={content.hero_tagline} onChange={(e) => setContent({ ...content, hero_tagline: e.target.value })} />
             </div>
             <div>
               <Label>Team Description</Label>
-              <Textarea
-                value={content.team_description}
-                onChange={(e) => setContent({ ...content, team_description: e.target.value })}
-              />
+              <Textarea value={content.team_description} onChange={(e) => setContent({ ...content, team_description: e.target.value })} />
             </div>
 
             <div className="space-y-4 border border-border bg-background/40 p-4">
@@ -267,12 +262,7 @@ const Admin = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      type="button"
-                      variant="cathedral"
-                      onClick={() => setAwardFromSelectedPlayer(award.key)}
-                      disabled={!selectedPlayer}
-                    >
+                    <Button type="button" variant="cathedral" onClick={() => setAwardFromSelectedPlayer(award.key)} disabled={!selectedPlayer}>
                       Add
                     </Button>
                     <Button type="button" variant="outline" onClick={() => clearAwardValue(award.key)}>
@@ -289,6 +279,45 @@ const Admin = () => {
                   onChange={(e) => setContent({ ...content, tournament_date: e.target.value })}
                 />
               </div>
+              <div>
+                <Label>Last Tournament Stats</Label>
+                <Textarea
+                  value={content.last_tournament_stats}
+                  onChange={(e) => setContent({ ...content, last_tournament_stats: e.target.value })}
+                  placeholder="Example: Maps Won: 4 | Kills: 289 | MVP: NYX"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 border border-border bg-background/40 p-4">
+              <h3 className="font-display text-xl">About Section + Socials</h3>
+              <div>
+                <Label>About Title</Label>
+                <Input value={content.about_title} onChange={(e) => setContent({ ...content, about_title: e.target.value })} />
+              </div>
+              <div>
+                <Label>About Description</Label>
+                <Textarea
+                  value={content.about_description}
+                  onChange={(e) => setContent({ ...content, about_description: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Facebook URL</Label>
+                <Input
+                  value={content.facebook_url}
+                  onChange={(e) => setContent({ ...content, facebook_url: e.target.value })}
+                  placeholder="https://facebook.com/yourpage"
+                />
+              </div>
+              <div>
+                <Label>Discord URL</Label>
+                <Input
+                  value={content.discord_url}
+                  onChange={(e) => setContent({ ...content, discord_url: e.target.value })}
+                  placeholder="https://discord.gg/yourserver"
+                />
+              </div>
             </div>
 
             <Button variant="hero" onClick={saveContent} disabled={saving}>
@@ -299,13 +328,9 @@ const Admin = () => {
 
         <section className="border border-border bg-card/40 p-6">
           <h2 className="mb-6 font-display text-2xl">Player Editor</h2>
-          <div className="mb-6 flex gap-2">
+          <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
             {players.map((player) => (
-              <Button
-                key={player.id}
-                variant={selectedPlayer?.id === player.id ? "hero" : "cathedral"}
-                onClick={() => setSelectedPlayer(player)}
-              >
+              <Button key={player.id} variant={selectedPlayer?.id === player.id ? "hero" : "cathedral"} onClick={() => setSelectedPlayer(player)}>
                 {player.codename}
               </Button>
             ))}
@@ -332,9 +357,14 @@ const Admin = () => {
                 </div>
                 <div>
                   <Label>Codename</Label>
+                  <Input value={selectedPlayer.codename} onChange={(e) => setSelectedPlayer({ ...selectedPlayer, codename: e.target.value })} />
+                </div>
+                <div>
+                  <Label>In-Game UID</Label>
                   <Input
-                    value={selectedPlayer.codename}
-                    onChange={(e) => setSelectedPlayer({ ...selectedPlayer, codename: e.target.value })}
+                    value={selectedPlayer.player_id}
+                    onChange={(e) => setSelectedPlayer({ ...selectedPlayer, player_id: e.target.value })}
+                    placeholder="Player UID"
                   />
                 </div>
                 <div>
@@ -349,7 +379,7 @@ const Admin = () => {
                   <Select
                     value={selectedPlayer.role || "__none__"}
                     onValueChange={(value) =>
-                      setSelectedPlayer({ ...selectedPlayer, role: value === "__none__" ? "" : value })
+                      setSelectedPlayer({ ...selectedPlayer, role: value === "__none__" ? null : value })
                     }
                   >
                     <SelectTrigger>
@@ -382,10 +412,7 @@ const Admin = () => {
                 </div>
                 <div>
                   <Label>Bio</Label>
-                  <Textarea
-                    value={selectedPlayer.bio || ""}
-                    onChange={(e) => setSelectedPlayer({ ...selectedPlayer, bio: e.target.value })}
-                  />
+                  <Textarea value={selectedPlayer.bio || ""} onChange={(e) => setSelectedPlayer({ ...selectedPlayer, bio: e.target.value })} />
                 </div>
               </div>
 
