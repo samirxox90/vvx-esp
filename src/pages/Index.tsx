@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import teamLogo from "@/assets/velocity-vortex-x-logo.jpg";
-import { calculateRating10, type PlayerStats } from "@/data/esports";
+
 
 interface SiteContent {
   hero_title: string;
