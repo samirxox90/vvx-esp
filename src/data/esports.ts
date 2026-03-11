@@ -43,6 +43,12 @@ export const calculateRating = (stats: PlayerStats) => {
   return Math.round(weighted);
 };
 
+export const calculateRating10 = (stats: PlayerStats) => {
+  const weighted = statConfig.reduce((sum, stat) => sum + normalizeStat(stat.key, stats[stat.key]) * stat.weight, 0);
+  const score = 1 + (weighted / 100) * 9;
+  return Number(score.toFixed(2));
+};
+
 export const initialPlayers = (images: Record<string, string>): Player[] => [
   {
     id: "nyx",
