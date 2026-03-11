@@ -281,8 +281,9 @@ const Index = () => {
       <section className="mx-auto max-w-7xl px-6 py-20">
         <h2 className="mb-12 text-center font-display text-4xl md:text-6xl">ROSTER</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {ratedPlayers.map((player) => {
+          {sortedPlayers.map((player) => {
             const roleBadges = getRoleBadges(player.role);
+            const ratingDirection = getRatingDirection(player.rating);
 
             return (
               <div key={player.id} className="group border border-border bg-card/40 transition-all hover:border-highlight">
@@ -314,10 +315,10 @@ const Index = () => {
                   )}
                   <div className="mt-3 flex items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${getRatingDirection(player.rating).badgeClass}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${ratingDirection.badgeClass}`}
                     >
-                      {getRatingDirection(player.rating).icon}
-                      {getRatingDirection(player.rating).label}
+                      {ratingDirection.icon}
+                      {ratingDirection.label}
                     </span>
                     <p className={`text-sm ${getRatingToneClass(player.rating)}`}>
                       Rating: {player.rating.toFixed(2)} / 10.00
