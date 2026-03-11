@@ -183,6 +183,16 @@ const Admin = () => {
   const savePlayer = async () => {
     if (!selectedPlayer) return;
 
+    if (!selectedPlayer.codename.trim()) {
+      toast.error("Codename is required");
+      return;
+    }
+
+    if (!selectedPlayer.player_id.trim()) {
+      toast.error("In-Game UID is required");
+      return;
+    }
+
     const parsedInput = Number(normalizeRatingInput(ratingInput));
     if (Number.isNaN(parsedInput)) {
       toast.error("Rating must be a valid number between 1.00 and 10.00");
