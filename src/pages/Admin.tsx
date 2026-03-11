@@ -49,6 +49,21 @@ interface Player {
 
 const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
 
+const createNewPlayer = (): Player => ({
+  id: crypto.randomUUID(),
+  player_id: "",
+  codename: "New Member",
+  real_name: null,
+  role: null,
+  country: null,
+  age: null,
+  bio: null,
+  image_url: null,
+  stats: { rating: 1 },
+  trends: {},
+  updated_at: new Date().toISOString(),
+});
+
 const awardFields = [
   { key: "player_of_match", label: "Player of the Match" },
   { key: "player_of_month", label: "Player of the Month" },
@@ -143,6 +158,13 @@ const Admin = () => {
     setAwardValue(field, "");
   };
 
+  const addNewPlayer = () => {
+    const newPlayer = createNewPlayer();
+    setPlayers((prev) => [...prev, newPlayer]);
+    setSelectedPlayer(newPlayer);
+    setRatingInput("1.00");
+  };
+
   const saveContent = async () => {
     setSaving(true);
     try {
@@ -160,6 +182,16 @@ const Admin = () => {
 
   const savePlayer = async () => {
     if (!selectedPlayer) return;
+
+    if (!selectedPlayer.codename.trim()) {
+      toast.error("Codename is required");
+      return;
+    }
+
+    if (!selectedPlayer.player_id.trim()) {
+      toast.error("In-Game UID is required");
+      return;
+    }
 
     const parsedInput = Number(normalizeRatingInput(ratingInput));
     if (Number.isNaN(parsedInput)) {
@@ -328,7 +360,10 @@ const Admin = () => {
 
         <section className="border border-border bg-card/40 p-6">
           <h2 className="mb-6 font-display text-2xl">Player Editor</h2>
-          <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+          <div className="mb-6 flex flex-wrap items-center gap-2 overflow-x-auto pb-2">
+            <Button type="button" variant="outline" onClick={addNewPlayer}>
+              Add Player/Member
+            </Button>
             {players.map((player) => (
               <Button key={player.id} variant={selectedPlayer?.id === player.id ? "hero" : "cathedral"} onClick={() => setSelectedPlayer(player)}>
                 {player.codename}
