@@ -39,6 +39,7 @@ interface Player {
   image_url: string | null;
   stats: Record<string, number>;
   trends: Record<string, number[]>;
+  updated_at: string;
 }
 
 const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
