@@ -46,6 +46,28 @@ const getPlayerRating = (player: Player) => {
   return calculateRating10(safeStats);
 };
 
+const getRatingToneClass = (rating: number) => {
+  if (rating < 3) return "text-destructive";
+  if (rating < 7) return "text-highlight";
+  return "text-primary";
+};
+
+const getRatingDirection = (rating: number) => {
+  if (rating >= 7) {
+    return {
+      label: "Up",
+      icon: <TrendingUp className="h-3.5 w-3.5" />,
+      badgeClass: "border-primary/40 bg-primary/15 text-primary",
+    };
+  }
+
+  return {
+    label: "Down",
+    icon: <TrendingDown className="h-3.5 w-3.5" />,
+    badgeClass: "border-destructive/40 bg-destructive/10 text-destructive",
+  };
+};
+
 const getRoleBadges = (role: string | null) => {
   const value = (role ?? "").toLowerCase();
   const badges: Array<{ key: string; label: string; icon: ReactNode; className: string }> = [];
