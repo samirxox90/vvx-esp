@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
-import { ArrowUpRight, Settings2 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, Settings2, LogOut, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatGraph } from "@/components/esports/StatGraph";
 import { calculateRating, initialPlayers, statConfig, type StatKey } from "@/data/esports";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 import heroImage from "@/assets/esports-hero.jpg";
 import nyxImage from "@/assets/player-nyx.jpg";
@@ -33,6 +37,9 @@ const playBassHit = () => {
 };
 
 const Index = () => {
+  const { user, isAdmin, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+
   const [players, setPlayers] = useState(() =>
     initialPlayers({ nyx: nyxImage, rift: riftImage, volt: voltImage, aero: aeroImage }),
   );
@@ -41,6 +48,7 @@ const Index = () => {
   const [hoveredPlayerId, setHoveredPlayerId] = useState(players[0].id);
   const [focusedStat, setFocusedStat] = useState<StatKey>("headshot");
   const [flashStat, setFlashStat] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const activePlayer = useMemo(
     () => players.find((player) => player.id === activePlayerId) ?? players[0],
@@ -70,6 +78,36 @@ const Index = () => {
     );
   };
 
+  const saveToDatabase = async () => {
+    if (!isAdmin) {
+      toast.error("Only admins can save player stats");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      for (const player of players) {
+        const { error } = await supabase.from("player_stats").upsert(
+          {
+            player_id: player.id,
+            codename: player.codename,
+            stats: player.stats,
+            trends: player.trends,
+          },
+          { onConflict: "player_id" },
+        );
+        if (error) throw error;
+      }
+      toast.success("Player stats saved successfully");
+    } catch (error: unknown) {
+      console.error("Error saving stats:", error);
+      const message = error instanceof Error ? error.message : "Failed to save stats";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const triggerStatFocus = (stat: StatKey) => {
     setFocusedStat(stat);
     setFlashStat(true);
@@ -77,9 +115,37 @@ const Index = () => {
     window.setTimeout(() => setFlashStat(false), 220);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to sign out";
+      toast.error(message);
+    }
+  };
+
   return (
     <main className="bg-background text-foreground">
       {flashStat && <div className="stat-flash animate-flash" aria-hidden="true" />}
+
+      {/* Auth Header */}
+      <div className="fixed right-6 top-6 z-50 flex items-center gap-3">
+        {user ? (
+          <>
+            <span className="text-xs text-muted-foreground">{user.email}</span>
+            {isAdmin && <span className="border border-highlight/40 bg-highlight/10 px-2 py-1 text-xs text-highlight">ADMIN</span>}
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <Button variant="cathedral" size="sm" onClick={() => navigate("/login")}>
+            <LogIn className="h-4 w-4" />
+            Sign In
+          </Button>
+        )}
+      </div>
 
       <section className="relative min-h-screen overflow-hidden border-b border-border">
         <img
@@ -107,12 +173,22 @@ const Index = () => {
               real time.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button variant="hero" size="lg" onClick={() => document.getElementById("players")?.scrollIntoView({ behavior: "smooth" })}>
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => document.getElementById("players")?.scrollIntoView({ behavior: "smooth" })}
+              >
                 Explore Roster <ArrowUpRight />
               </Button>
-              <Button variant="cathedral" size="lg" onClick={() => document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" })}>
-                Open VVX Admin <Settings2 />
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="cathedral"
+                  size="lg"
+                  onClick={() => document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" })}
+                >
+                  Open VVX Admin <Settings2 />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -149,7 +225,9 @@ const Index = () => {
                     }`}
                   >
                     <span className="font-display text-2xl uppercase tracking-[0.12em] md:text-4xl">{player.codename}</span>
-                    <span className="text-xs text-muted-foreground">RATING #{index + 1} · {calculateRating(player.stats)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      RATING #{index + 1} · {calculateRating(player.stats)}
+                    </span>
                   </button>
                 );
               })}
@@ -218,50 +296,55 @@ const Index = () => {
         </div>
       </section>
 
-      <section id="admin" className="py-20">
-        <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 md:grid-cols-12 md:px-12">
-          <div className="space-y-5 md:col-span-4">
-            <h2 className="text-3xl md:text-5xl">ADMIN PANEL</h2>
-            <p className="text-sm text-muted-foreground">Adjust player stats below. Ratings and trend graph update live.</p>
-            <div className="space-y-2">
-              {players.map((player) => (
-                <Button
-                  key={player.id}
-                  variant={activePlayerId === player.id ? "hero" : "cathedral"}
-                  className="w-full justify-between"
-                  onClick={() => setActivePlayerId(player.id)}
-                >
-                  <span>{player.codename}</span>
-                  <span>{calculateRating(player.stats)}</span>
-                </Button>
+      {isAdmin && (
+        <section id="admin" className="py-20">
+          <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 md:grid-cols-12 md:px-12">
+            <div className="space-y-5 md:col-span-4">
+              <h2 className="text-3xl md:text-5xl">ADMIN PANEL</h2>
+              <p className="text-sm text-muted-foreground">Adjust player stats below. Ratings and trend graph update live.</p>
+              <div className="space-y-2">
+                {players.map((player) => (
+                  <Button
+                    key={player.id}
+                    variant={activePlayerId === player.id ? "hero" : "cathedral"}
+                    className="w-full justify-between"
+                    onClick={() => setActivePlayerId(player.id)}
+                  >
+                    <span>{player.codename}</span>
+                    <span>{calculateRating(player.stats)}</span>
+                  </Button>
+                ))}
+              </div>
+              <Button variant="hero" className="w-full" onClick={saveToDatabase} disabled={saving}>
+                {saving ? "Saving..." : "Save to Database"}
+              </Button>
+            </div>
+
+            <div className="space-y-4 border border-border bg-card/40 p-6 md:col-span-8">
+              {statConfig.map((stat) => (
+                <label key={stat.key} className="grid gap-2 border-b border-border/60 pb-4 last:border-none">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{stat.label}</span>
+                    <span className="font-display text-lg">
+                      {activePlayer.stats[stat.key]}
+                      {stat.unit}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={stat.max}
+                    step={stat.step}
+                    value={activePlayer.stats[stat.key]}
+                    onChange={(event) => updateStat(activePlayer.id, stat.key, Number(event.target.value))}
+                    className="h-2 w-full cursor-pointer accent-highlight"
+                  />
+                </label>
               ))}
             </div>
           </div>
-
-          <div className="space-y-4 border border-border bg-card/40 p-6 md:col-span-8">
-            {statConfig.map((stat) => (
-              <label key={stat.key} className="grid gap-2 border-b border-border/60 pb-4 last:border-none">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{stat.label}</span>
-                  <span className="font-display text-lg">
-                    {activePlayer.stats[stat.key]}
-                    {stat.unit}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={stat.max}
-                  step={stat.step}
-                  value={activePlayer.stats[stat.key]}
-                  onChange={(event) => updateStat(activePlayer.id, stat.key, Number(event.target.value))}
-                  className="h-2 w-full cursor-pointer accent-highlight"
-                />
-              </label>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 };
