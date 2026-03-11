@@ -31,7 +31,7 @@ interface Player {
 }
 
 const Admin = () => {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [content, setContent] = useState<SiteContent>({
     hero_title: "",
