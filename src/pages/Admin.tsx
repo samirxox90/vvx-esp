@@ -142,11 +142,25 @@ const Admin = () => {
 
   const savePlayer = async () => {
     if (!selectedPlayer) return;
+    const rating = getPlayerRatingValue(selectedPlayer.stats);
+    if (rating < 1 || rating > 10) {
+      toast.error("Rating must be between 1.00 and 10.00");
+      return;
+    }
+
     setSaving(true);
     try {
+      const playerToSave = {
+        ...selectedPlayer,
+        stats: {
+          ...selectedPlayer.stats,
+          rating: Number(rating.toFixed(2)),
+        },
+      };
+
       const { error } = await supabase
         .from("player_stats")
-        .upsert(selectedPlayer, { onConflict: "player_id" });
+        .upsert(playerToSave, { onConflict: "player_id" });
       if (error) throw error;
       toast.success("Player saved");
       loadPlayers();
