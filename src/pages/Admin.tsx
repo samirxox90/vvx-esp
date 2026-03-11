@@ -206,55 +206,50 @@ const Admin = () => {
               />
             </div>
 
-            <datalist id="player-options">
-              {players.map((player) => (
-                <option key={player.id} value={player.codename} />
+            <div className="space-y-4 border border-border bg-background/40 p-4">
+              <h3 className="font-display text-xl">Player Awards (Add / Delete)</h3>
+              {awardFields.map((award) => (
+                <div key={award.key} className="space-y-2">
+                  <Label>{award.label} (Leader choice)</Label>
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                    <Select
+                      value={content[award.key] ? content[award.key] : "__none__"}
+                      onValueChange={(value) => setAwardValue(award.key, value === "__none__" ? "" : value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select player" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {players.map((player) => (
+                          <SelectItem key={`${award.key}-${player.id}`} value={player.codename}>
+                            {player.codename}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="cathedral"
+                      onClick={() => setAwardFromSelectedPlayer(award.key)}
+                      disabled={!selectedPlayer}
+                    >
+                      Add
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => clearAwardValue(award.key)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </datalist>
-
-            <div>
-              <Label>Player of the Match (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_match}
-                onChange={(e) => setContent({ ...content, player_of_match: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Month (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_month}
-                onChange={(e) => setContent({ ...content, player_of_month: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Season (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_season}
-                onChange={(e) => setContent({ ...content, player_of_season: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Tournament (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_tournament}
-                onChange={(e) => setContent({ ...content, player_of_tournament: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Tournament Date</Label>
-              <Input
-                type="date"
-                value={content.tournament_date}
-                onChange={(e) => setContent({ ...content, tournament_date: e.target.value })}
-              />
+              <div>
+                <Label>Tournament Date</Label>
+                <Input
+                  type="date"
+                  value={content.tournament_date}
+                  onChange={(e) => setContent({ ...content, tournament_date: e.target.value })}
+                />
+              </div>
             </div>
 
             <Button variant="hero" onClick={saveContent} disabled={saving}>
