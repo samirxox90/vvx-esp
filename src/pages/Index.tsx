@@ -117,6 +117,17 @@ const getRoleBadges = (role: string | null) => {
   return badges;
 };
 
+const getRolePriority = (role: string | null) => {
+  const value = (role ?? "").toLowerCase();
+
+  if (value.includes("igl") || value.includes("leader")) return 0;
+  if (value.includes("rusher") || value.includes("entry")) return 1;
+  if (value.includes("assaulter") || value.includes("assault")) return 2;
+  if (value.includes("support") || value.includes("supporter")) return 3;
+  if (value.includes("boomber") || value.includes("bomber")) return 4;
+  return 5;
+};
+
 const Index = () => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
@@ -134,14 +145,33 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadContent();
-    loadPlayers();
+    let isActive = true;
+
+    const initializePage = async () => {
+      setLoading(true);
+      await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+      if (isActive) setLoading(false);
+    };
+
+    void initializePage();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const ratedPlayers = useMemo(
     () => players.map((player) => ({ ...player, rating: getPlayerRating(player) })),
     [players],
   );
+
+  const sortedPlayers = useMemo(() => {
+    return [...ratedPlayers].sort((a, b) => {
+      const priorityDiff = getRolePriority(a.role) - getRolePriority(b.role);
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.codename.localeCompare(b.codename);
+    });
+  }, [ratedPlayers]);
 
   const findPlayerByManualValue = (manualValue: string) => {
     const normalized = manualValue.trim().toLowerCase();
