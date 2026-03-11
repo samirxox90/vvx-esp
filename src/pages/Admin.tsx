@@ -49,6 +49,21 @@ interface Player {
 
 const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
 
+const createNewPlayer = (): Player => ({
+  id: crypto.randomUUID(),
+  player_id: "",
+  codename: "New Member",
+  real_name: null,
+  role: null,
+  country: null,
+  age: null,
+  bio: null,
+  image_url: null,
+  stats: { rating: 1 },
+  trends: {},
+  updated_at: new Date().toISOString(),
+});
+
 const awardFields = [
   { key: "player_of_match", label: "Player of the Match" },
   { key: "player_of_month", label: "Player of the Month" },
