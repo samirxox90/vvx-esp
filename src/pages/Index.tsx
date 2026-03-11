@@ -48,22 +48,47 @@ const getPlayerRating = (player: Player) => {
 
 const getRoleBadges = (role: string | null) => {
   const value = (role ?? "").toLowerCase();
-  const badges: Array<{ key: string; label: string; icon: ReactNode }> = [];
+  const badges: Array<{ key: string; label: string; icon: ReactNode; className: string }> = [];
 
   if (value.includes("rusher") || value.includes("entry")) {
-    badges.push({ key: "rusher", label: "Rusher", icon: <Flame className="h-3.5 w-3.5" /> });
+    badges.push({
+      key: "rusher",
+      label: "Rusher",
+      icon: <Flame className="h-3.5 w-3.5" />,
+      className: "border-primary/40 bg-primary/15 text-primary",
+    });
   }
   if (value.includes("assaulter") || value.includes("assault")) {
-    badges.push({ key: "assaulter", label: "Assaulter", icon: <Swords className="h-3.5 w-3.5" /> });
+    badges.push({
+      key: "assaulter",
+      label: "Assaulter",
+      icon: <Swords className="h-3.5 w-3.5" />,
+      className: "border-accent/50 bg-accent/20 text-accent-foreground",
+    });
   }
   if (value.includes("support") || value.includes("supporter")) {
-    badges.push({ key: "supporter", label: "Supporter", icon: <Shield className="h-3.5 w-3.5" /> });
+    badges.push({
+      key: "supporter",
+      label: "Supporter",
+      icon: <Shield className="h-3.5 w-3.5" />,
+      className: "border-secondary/60 bg-secondary/50 text-secondary-foreground",
+    });
   }
   if (value.includes("boomber") || value.includes("bomber")) {
-    badges.push({ key: "boomber", label: "Boomber", icon: <Zap className="h-3.5 w-3.5" /> });
+    badges.push({
+      key: "boomber",
+      label: "Boomber",
+      icon: <Zap className="h-3.5 w-3.5" />,
+      className: "border-destructive/40 bg-destructive/10 text-destructive",
+    });
   }
   if (value.includes("igl") || value.includes("leader")) {
-    badges.push({ key: "leader", label: "IGL / Leader", icon: <Crown className="h-3.5 w-3.5" /> });
+    badges.push({
+      key: "leader",
+      label: "IGL / Leader",
+      icon: <Crown className="h-3.5 w-3.5" />,
+      className: "border-highlight/40 bg-highlight/15 text-highlight",
+    });
   }
 
   return badges;
@@ -224,7 +249,7 @@ const Index = () => {
                       {roleBadges.map((badge) => (
                         <span
                           key={`${player.id}-${badge.key}`}
-                          className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-1 text-[11px] text-secondary-foreground"
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${badge.className}`}
                         >
                           {badge.icon}
                           {badge.label}

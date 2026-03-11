@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,6 +41,17 @@ interface Player {
   stats: Record<string, number>;
   trends: Record<string, number[]>;
 }
+
+const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
+
+const awardFields = [
+  { key: "player_of_match", label: "Player of the Match" },
+  { key: "player_of_month", label: "Player of the Month" },
+  { key: "player_of_season", label: "Player of the Season" },
+  { key: "player_of_tournament", label: "Player of the Tournament" },
+] as const;
+
+type AwardFieldKey = (typeof awardFields)[number]["key"];
 
 const Admin = () => {
   const { isAdmin, loading: authLoading } = useAuth();
@@ -78,6 +96,19 @@ const Admin = () => {
     const { data } = await supabase.from("player_stats").select("*").order("codename");
     setPlayers((data || []) as Player[]);
     if (data && data.length > 0) setSelectedPlayer(data[0] as Player);
+  };
+
+  const setAwardValue = (field: AwardFieldKey, value: string) => {
+    setContent((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const setAwardFromSelectedPlayer = (field: AwardFieldKey) => {
+    if (!selectedPlayer) return;
+    setAwardValue(field, selectedPlayer.codename);
+  };
+
+  const clearAwardValue = (field: AwardFieldKey) => {
+    setAwardValue(field, "");
   };
 
   const saveContent = async () => {
@@ -175,55 +206,50 @@ const Admin = () => {
               />
             </div>
 
-            <datalist id="player-options">
-              {players.map((player) => (
-                <option key={player.id} value={player.codename} />
+            <div className="space-y-4 border border-border bg-background/40 p-4">
+              <h3 className="font-display text-xl">Player Awards (Add / Delete)</h3>
+              {awardFields.map((award) => (
+                <div key={award.key} className="space-y-2">
+                  <Label>{award.label} (Leader choice)</Label>
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                    <Select
+                      value={content[award.key] ? content[award.key] : "__none__"}
+                      onValueChange={(value) => setAwardValue(award.key, value === "__none__" ? "" : value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select player" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {players.map((player) => (
+                          <SelectItem key={`${award.key}-${player.id}`} value={player.codename}>
+                            {player.codename}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="cathedral"
+                      onClick={() => setAwardFromSelectedPlayer(award.key)}
+                      disabled={!selectedPlayer}
+                    >
+                      Add
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => clearAwardValue(award.key)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </datalist>
-
-            <div>
-              <Label>Player of the Match (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_match}
-                onChange={(e) => setContent({ ...content, player_of_match: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Month (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_month}
-                onChange={(e) => setContent({ ...content, player_of_month: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Season (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_season}
-                onChange={(e) => setContent({ ...content, player_of_season: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Player of the Tournament (Leader choice)</Label>
-              <Input
-                list="player-options"
-                value={content.player_of_tournament}
-                onChange={(e) => setContent({ ...content, player_of_tournament: e.target.value })}
-                placeholder="Enter player codename"
-              />
-            </div>
-            <div>
-              <Label>Tournament Date</Label>
-              <Input
-                type="date"
-                value={content.tournament_date}
-                onChange={(e) => setContent({ ...content, tournament_date: e.target.value })}
-              />
+              <div>
+                <Label>Tournament Date</Label>
+                <Input
+                  type="date"
+                  value={content.tournament_date}
+                  onChange={(e) => setContent({ ...content, tournament_date: e.target.value })}
+                />
+              </div>
             </div>
 
             <Button variant="hero" onClick={saveContent} disabled={saving}>
@@ -281,10 +307,24 @@ const Admin = () => {
                 </div>
                 <div>
                   <Label>Role</Label>
-                  <Input
-                    value={selectedPlayer.role || ""}
-                    onChange={(e) => setSelectedPlayer({ ...selectedPlayer, role: e.target.value })}
-                  />
+                  <Select
+                    value={selectedPlayer.role || "__none__"}
+                    onValueChange={(value) =>
+                      setSelectedPlayer({ ...selectedPlayer, role: value === "__none__" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {roleOptions.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Country</Label>
