@@ -59,6 +59,10 @@ const getPlayerRatingValue = (stats: Record<string, number>) => {
   return Math.min(10, Math.max(1, Number(parsed.toFixed(2))));
 };
 
+const clampRating = (value: number) => Math.min(10, Math.max(1, Number(value.toFixed(2))));
+
+const normalizeRatingInput = (value: string) => value.replace(",", ".").trim();
+
 const formatUpdatedDate = (updatedAt: string) => {
   const date = new Date(updatedAt);
   if (Number.isNaN(date.getTime())) return "-";
