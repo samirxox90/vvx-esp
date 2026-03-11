@@ -10,6 +10,7 @@ import nyxImage from "@/assets/player-nyx.jpg";
 import riftImage from "@/assets/player-rift.jpg";
 import voltImage from "@/assets/player-volt.jpg";
 import aeroImage from "@/assets/player-aero.jpg";
+import teamLogo from "@/assets/velocity-vortex-x-logo.jpg";
 
 const playBassHit = () => {
   if (typeof window === "undefined") return;
@@ -83,27 +84,34 @@ const Index = () => {
       <section className="relative min-h-screen overflow-hidden border-b border-border">
         <img
           src={heroImage}
-          alt="Esports team standing in a brutalist arena"
+          alt="Velocity Vortex X esports squad"
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
         />
-        <div className="absolute inset-0 bg-background/62" />
-        <div className="absolute inset-0 bg-cathedral-slice opacity-70" />
+        <div className="absolute inset-0 bg-background/70" />
+        <div className="absolute inset-0 bg-cathedral-slice opacity-80" />
 
         <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-end px-6 pb-20 md:px-12">
           <div className="max-w-3xl space-y-6">
-            <p className="text-sm tracking-[0.3em] text-muted-foreground">GLITCH CATHEDRAL</p>
-            <h1 className="text-4xl leading-tight md:text-7xl">A DIGITAL HEADQUARTERS FOR COMPETITIVE OBSESSION</h1>
+            <div className="inline-flex items-center gap-4 border border-border bg-background/65 px-3 py-2 backdrop-blur-sm">
+              <img src={teamLogo} alt="Velocity Vortex X team logo" className="h-14 w-14 rounded-sm border border-border object-cover" loading="lazy" />
+              <div>
+                <p className="text-xs tracking-[0.25em] text-muted-foreground">OFFICIAL TEAM IDENTITY</p>
+                <p className="font-display text-lg text-highlight">VELOCITY VORTEX X</p>
+              </div>
+            </div>
+
+            <h1 className="text-4xl leading-tight md:text-7xl">VELOCITY VORTEX X ESPORTS HQ</h1>
             <p className="max-w-xl text-sm text-muted-foreground md:text-base">
-              Monumental focus for fans. Precision control for staff. Every player detail and rating update lives in one
-              command surface.
+              Dark-cyan arena visuals, full player breakdowns, and a live rating system that your admin panel can tune in
+              real time.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button variant="hero" size="lg" onClick={() => document.getElementById("players")?.scrollIntoView({ behavior: "smooth" })}>
                 Explore Roster <ArrowUpRight />
               </Button>
               <Button variant="cathedral" size="lg" onClick={() => document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" })}>
-                Open Admin Panel <Settings2 />
+                Open VVX Admin <Settings2 />
               </Button>
             </div>
           </div>
@@ -114,8 +122,8 @@ const Index = () => {
         <div className="mx-auto grid w-full max-w-4xl gap-10 px-6 md:px-12">
           <h2 className="text-3xl md:text-5xl">TEAM MANDATE</h2>
           <p className="max-w-3xl text-sm leading-relaxed md:text-base">
-            We frame players as modern gladiators, not content creators. This space is designed for analysis: real
-            numbers, direct comparisons, and clean authority. Fans debate with data; admins tune performance with intent.
+            Velocity Vortex X runs on discipline and speed. Fans get transparent stats and ranking logic, while staff can
+            calibrate every player metric from one focused control panel.
           </p>
         </div>
       </section>
@@ -157,7 +165,9 @@ const Index = () => {
             />
             <div className="absolute inset-x-0 bottom-0 border-t border-border bg-background/75 px-4 py-3 backdrop-blur-sm">
               <p className="font-display text-2xl">{hoveredPlayer.codename}</p>
-              <p className="text-xs text-muted-foreground">{hoveredPlayer.role} · {hoveredPlayer.country}</p>
+              <p className="text-xs text-muted-foreground">
+                {hoveredPlayer.role} · {hoveredPlayer.country}
+              </p>
             </div>
           </div>
         </div>
@@ -167,7 +177,9 @@ const Index = () => {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 md:grid-cols-12 md:px-12">
           <div className="space-y-5 md:col-span-5">
             <h2 className="text-3xl md:text-5xl">{activePlayer.codename}</h2>
-            <p className="text-sm text-muted-foreground">{activePlayer.realName} · {activePlayer.age} · {activePlayer.country}</p>
+            <p className="text-sm text-muted-foreground">
+              {activePlayer.realName} · {activePlayer.age} · {activePlayer.country}
+            </p>
             <p className="text-sm leading-relaxed text-muted-foreground">{activePlayer.bio}</p>
             <div className="inline-flex items-center gap-2 border border-highlight/30 bg-highlight/10 px-4 py-2 text-sm">
               Team Rating: <span className="font-display text-xl text-highlight">{calculateRating(activePlayer.stats)}</span>
