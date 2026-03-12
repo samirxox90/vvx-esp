@@ -212,7 +212,6 @@ const Index = () => {
 
   const handlePlayerSelect = (playerId: string) => {
     setSelectedPlayerId(playerId);
-    setPlayerMenuOpen(false);
   };
 
   const findPlayerByManualValue = (manualValue: string) => {
@@ -291,7 +290,7 @@ const Index = () => {
               <Menu className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[85vw] sm:max-w-sm">
+          <SheetContent side="left" className="w-[85vw] overflow-y-auto sm:max-w-sm">
             <SheetHeader>
               <SheetTitle>All Players</SheetTitle>
             </SheetHeader>
@@ -311,6 +310,64 @@ const Index = () => {
                 </Button>
               ))}
             </div>
+
+            {selectedPlayer && (
+              <Card className="mt-6 bg-card/40">
+                <CardContent className="space-y-4 p-4">
+                  {selectedPlayer.image_url ? (
+                    <img
+                      src={selectedPlayer.image_url}
+                      alt={`${selectedPlayer.codename} full profile`}
+                      className="h-52 w-full border border-border object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="h-52 w-full border border-border bg-muted" />
+                  )}
+
+                  <div>
+                    <h3 className="font-display text-2xl">{selectedPlayer.codename}</h3>
+                    <p className="text-xs text-muted-foreground">Last updated: {formatUpdatedDate(selectedPlayer.updated_at)}</p>
+                  </div>
+
+                  <div className="grid gap-2 text-sm">
+                    <p><span className="text-muted-foreground">In-Game UID:</span> {selectedPlayer.player_id || "-"}</p>
+                    <p><span className="text-muted-foreground">Real Name:</span> {selectedPlayer.real_name || "-"}</p>
+                    <p><span className="text-muted-foreground">Role:</span> {selectedPlayer.role || "-"}</p>
+                    <p><span className="text-muted-foreground">Country:</span> {selectedPlayer.country || "-"}</p>
+                    <p><span className="text-muted-foreground">Age:</span> {selectedPlayer.age ?? "-"}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${getRatingDirection(selectedPlayer.rating).badgeClass}`}
+                    >
+                      {getRatingDirection(selectedPlayer.rating).icon}
+                      {getRatingDirection(selectedPlayer.rating).label}
+                    </span>
+                    <p className={`text-sm ${getRatingToneClass(selectedPlayer.rating)}`}>
+                      Rating: {selectedPlayer.rating.toFixed(2)} / 10.00
+                    </p>
+                  </div>
+
+                  {getRoleBadges(selectedPlayer.role).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {getRoleBadges(selectedPlayer.role).map((badge) => (
+                        <span
+                          key={`${selectedPlayer.id}-${badge.key}`}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${badge.className}`}
+                        >
+                          {badge.icon}
+                          {badge.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">{selectedPlayer.bio || "No bio available."}</p>
+                </CardContent>
+              </Card>
+            )}
           </SheetContent>
         </Sheet>
       </header>
@@ -345,105 +402,6 @@ const Index = () => {
         <p className="max-w-3xl text-center text-muted-foreground">{content.team_description}</p>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-20">
-        <h2 className="mb-4 text-center font-display text-4xl md:text-6xl">ROSTER</h2>
-        <p className="mb-10 text-center text-sm text-muted-foreground">Swipe horizontally to explore the full roster cards.</p>
-        <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-2">
-          {sortedPlayers.map((player) => {
-            const roleBadges = getRoleBadges(player.role);
-            const ratingDirection = getRatingDirection(player.rating);
-
-            return (
-              <article
-                key={player.id}
-                className="group min-w-[270px] snap-start border border-border bg-card/40 transition-all hover:border-highlight md:min-w-[320px]"
-              >
-                {player.image_url ? (
-                  <img src={player.image_url} alt={`${player.codename} player portrait`} className="aspect-square w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="aspect-square w-full bg-muted" />
-                )}
-                <div className="border-t border-border p-4">
-                  <h3 className="mb-1 font-display text-2xl">{player.codename}</h3>
-                  {roleBadges.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {roleBadges.map((badge) => (
-                        <span
-                          key={`${player.id}-${badge.key}`}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${badge.className}`}
-                        >
-                          {badge.icon}
-                          {badge.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    player.role && <p className="text-xs text-muted-foreground">{player.role}</p>
-                  )}
-                  <div className="mt-3 flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${ratingDirection.badgeClass}`}
-                    >
-                      {ratingDirection.icon}
-                      {ratingDirection.label}
-                    </span>
-                    <p className={`text-sm ${getRatingToneClass(player.rating)}`}>Rating: {player.rating.toFixed(2)} / 10.00</p>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">Updated: {formatUpdatedDate(player.updated_at)}</p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {selectedPlayer && (
-        <section className="mx-auto max-w-7xl px-6 pb-20">
-          <h2 className="mb-4 text-center font-display text-4xl md:text-5xl">PLAYER INFORMATION CENTER</h2>
-          <p className="mb-8 text-center text-sm text-muted-foreground">Choose a player to view complete profile details.</p>
-          <div className="mb-6 flex gap-3 overflow-x-auto pb-2">
-            {sortedPlayers.map((player) => (
-              <Button
-                key={player.id}
-                type="button"
-                variant={selectedPlayer.id === player.id ? "hero" : "cathedral"}
-                onClick={() => setSelectedPlayerId(player.id)}
-              >
-                {player.codename}
-              </Button>
-            ))}
-          </div>
-
-          <Card className="bg-card/40">
-            <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
-              {selectedPlayer.image_url ? (
-                <img
-                  src={selectedPlayer.image_url}
-                  alt={`${selectedPlayer.codename} full profile`}
-                  className="h-56 w-full border border-border object-cover md:h-full"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="h-56 w-full border border-border bg-muted md:h-full" />
-              )}
-
-              <div className="space-y-4">
-                <h3 className="font-display text-3xl">{selectedPlayer.codename}</h3>
-                <div className="grid gap-3 text-sm sm:grid-cols-2">
-                  <p><span className="text-muted-foreground">In-Game UID:</span> {selectedPlayer.player_id}</p>
-                  <p><span className="text-muted-foreground">Real Name:</span> {selectedPlayer.real_name || "-"}</p>
-                  <p><span className="text-muted-foreground">Role:</span> {selectedPlayer.role || "-"}</p>
-                  <p><span className="text-muted-foreground">Country:</span> {selectedPlayer.country || "-"}</p>
-                  <p><span className="text-muted-foreground">Age:</span> {selectedPlayer.age ?? "-"}</p>
-                  <p><span className="text-muted-foreground">Rating:</span> {selectedPlayer.rating.toFixed(2)} / 10.00</p>
-                </div>
-                <p className="text-sm text-muted-foreground">{selectedPlayer.bio || "No bio available."}</p>
-                <p className="text-xs text-muted-foreground">Last updated: {formatUpdatedDate(selectedPlayer.updated_at)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      )}
 
       {playerAwards && (
         <section className="mx-auto max-w-7xl px-6 pb-20">
