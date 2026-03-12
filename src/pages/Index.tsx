@@ -318,7 +318,7 @@ const Index = () => {
                     <img
                       src={selectedPlayer.image_url}
                       alt={`${selectedPlayer.codename} full profile`}
-                      className="h-52 w-full border border-border object-cover"
+                      className="h-52 w-full rounded border border-border bg-muted object-contain"
                       loading="lazy"
                     />
                   ) : (
