@@ -403,7 +403,7 @@ const Admin = () => {
                     <img
                       src={selectedPlayer.image_url}
                       alt={selectedPlayer.codename}
-                      className="mb-2 h-48 w-48 rounded border border-border object-cover"
+                      className="mb-2 h-48 w-48 rounded border border-border bg-muted object-contain"
                     />
                   )}
                   <Input
