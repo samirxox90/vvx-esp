@@ -170,6 +170,7 @@ const Index = () => {
   });
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const [playerMenuOpen, setPlayerMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
