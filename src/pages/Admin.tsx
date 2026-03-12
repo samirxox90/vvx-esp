@@ -132,17 +132,36 @@ const Admin = () => {
   }, [selectedPlayer?.id]);
 
   const loadContent = async () => {
-    const { data } = await supabase.from("site_content").select("key, content");
-    if (data) {
-      const contentMap = data.reduce((acc, item) => ({ ...acc, [item.key]: item.content }), {} as Partial<SiteContent>);
-      setContent((prev) => ({ ...prev, ...contentMap }));
+    try {
+      const { data, error } = await supabase.from("site_content").select("key, content");
+      if (error) throw error;
+
+      if (data) {
+        const contentMap = data.reduce((acc, item) => ({ ...acc, [item.key]: item.content }), {} as Partial<SiteContent>);
+        setContent((prev) => ({ ...prev, ...contentMap }));
+      }
+    } catch (error) {
+      console.error("Error loading content:", error);
+      toast.error("Failed to load content");
     }
   };
 
   const loadPlayers = async () => {
-    const { data } = await supabase.from("player_stats").select("*").order("codename");
-    setPlayers((data || []) as Player[]);
-    if (data && data.length > 0) setSelectedPlayer(data[0] as Player);
+    try {
+      const { data, error } = await supabase.from("player_stats").select("*").order("codename");
+      if (error) throw error;
+
+      const nextPlayers = (data || []) as Player[];
+      setPlayers(nextPlayers);
+      setSelectedPlayer((prevSelected) => {
+        if (nextPlayers.length === 0) return null;
+        if (!prevSelected) return nextPlayers[0];
+        return nextPlayers.find((player) => player.id === prevSelected.id) ?? nextPlayers[0];
+      });
+    } catch (error) {
+      console.error("Error loading players:", error);
+      toast.error("Failed to load players");
+    }
   };
 
   const setAwardValue = (field: AwardFieldKey, value: string) => {
@@ -168,12 +187,12 @@ const Admin = () => {
   const saveContent = async () => {
     setSaving(true);
     try {
-      for (const [key, value] of Object.entries(content)) {
-        const { error } = await supabase.from("site_content").upsert({ key, content: value }, { onConflict: "key" });
-        if (error) throw error;
-      }
+      const contentPayload = Object.entries(content).map(([key, value]) => ({ key, content: value }));
+      const { error } = await supabase.from("site_content").upsert(contentPayload, { onConflict: "key" });
+      if (error) throw error;
       toast.success("Content saved");
     } catch (error) {
+      console.error("Error saving content:", error);
       toast.error("Failed to save content");
     } finally {
       setSaving(false);
@@ -216,6 +235,7 @@ const Admin = () => {
       toast.success("Player saved");
       void loadPlayers();
     } catch (error) {
+      console.error("Error saving player:", error);
       toast.error("Failed to save player");
     } finally {
       setSaving(false);
@@ -227,7 +247,8 @@ const Admin = () => {
     setUploading(true);
     try {
       const fileExt = file.name.split(".").pop();
-      const fileName = `${selectedPlayer.player_id}-${Date.now()}.${fileExt}`;
+      const safePlayerId = selectedPlayer.player_id.trim() || selectedPlayer.id;
+      const fileName = `${safePlayerId}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from("site-assets").upload(`players/${fileName}`, file);
       if (uploadError) throw uploadError;
 
@@ -235,9 +256,11 @@ const Admin = () => {
         data: { publicUrl },
       } = supabase.storage.from("site-assets").getPublicUrl(`players/${fileName}`);
 
-      setSelectedPlayer({ ...selectedPlayer, image_url: publicUrl });
+      setSelectedPlayer((prev) => (prev && prev.id === selectedPlayer.id ? { ...prev, image_url: publicUrl } : prev));
+      setPlayers((prev) => prev.map((player) => (player.id === selectedPlayer.id ? { ...player, image_url: publicUrl } : player)));
       toast.success("Image uploaded");
     } catch (error) {
+      console.error("Error uploading player image:", error);
       toast.error("Failed to upload image");
     } finally {
       setUploading(false);
