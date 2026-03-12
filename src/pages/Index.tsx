@@ -210,6 +210,11 @@ const Index = () => {
     [sortedPlayers, selectedPlayerId],
   );
 
+  const handlePlayerSelect = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+    setPlayerMenuOpen(false);
+  };
+
   const findPlayerByManualValue = (manualValue: string) => {
     const normalized = manualValue.trim().toLowerCase();
     if (!normalized) return null;
