@@ -182,7 +182,9 @@ const Admin = () => {
 
       if (data) {
         const contentMap = data.reduce((acc, item) => ({ ...acc, [item.key]: item.content }), {} as Partial<SiteContent>);
-        setContent((prev) => ({ ...prev, ...contentMap }));
+        const nextContent = { ...initialContent, ...contentMap };
+        setContent(nextContent);
+        setSavedContent(nextContent);
       }
     } catch (error) {
       console.error("Error loading content:", error);
