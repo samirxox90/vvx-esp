@@ -36,6 +36,35 @@ interface SiteContent {
 
 type SiteContentKey = keyof SiteContent;
 
+const initialContent: SiteContent = {
+  hero_title: "",
+  hero_tagline: "",
+  team_description: "",
+  player_of_match: "",
+  player_of_month: "",
+  player_of_season: "",
+  player_of_tournament: "",
+  tournament_date: "",
+  last_tournament_stats: "",
+  leaderboard_photo_url: "",
+  about_title: "",
+  about_description: "",
+  facebook_url: "",
+  discord_url: "",
+};
+
+const heroSectionFields: SiteContentKey[] = ["hero_title", "hero_tagline", "team_description"];
+const awardsSectionFields: SiteContentKey[] = [
+  "player_of_match",
+  "player_of_month",
+  "player_of_season",
+  "player_of_tournament",
+  "tournament_date",
+  "last_tournament_stats",
+  "leaderboard_photo_url",
+];
+const aboutSectionFields: SiteContentKey[] = ["about_title", "about_description", "facebook_url", "discord_url"];
+
 interface Player {
   id: string;
   player_id: string;
@@ -68,20 +97,8 @@ const normalizeRole = (value: string | null) => {
   return value.trim();
 };
 
-const createNewPlayer = (): Player => ({
-  id: crypto.randomUUID(),
-  player_id: "",
-  codename: "New Member",
-  real_name: null,
-  role: null,
-  country: null,
-  age: null,
-  bio: null,
-  image_url: null,
-  stats: { rating: 1 },
-  trends: {},
-  updated_at: new Date().toISOString(),
-});
+const hasUnsavedSectionChanges = (current: SiteContent, saved: SiteContent, fields: SiteContentKey[]) =>
+  fields.some((field) => (current[field] ?? "") !== (saved[field] ?? ""));
 
 const awardFields = [
   { key: "player_of_match", label: "Player of the Match" },
