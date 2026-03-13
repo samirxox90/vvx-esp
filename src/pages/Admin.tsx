@@ -207,20 +207,24 @@ const Admin = () => {
     setRatingInput("1.00");
   };
 
-  const saveContent = async () => {
+  const saveContentFields = async (fields: SiteContentKey[], successMessage = "Content saved") => {
     setSaving(true);
     try {
-      const contentPayload = Object.entries(content).map(([key, value]) => ({ key, content: value }));
+      const contentPayload = fields.map((key) => ({ key, content: content[key] ?? "" }));
       const { error } = await supabase.from("site_content").upsert(contentPayload, { onConflict: "key" });
       if (error) throw error;
       await loadContent();
-      toast.success("Content saved");
+      toast.success(successMessage);
     } catch (error) {
       console.error("Error saving content:", error);
       toast.error("Failed to save content");
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveContent = async () => {
+    await saveContentFields(Object.keys(content) as SiteContentKey[]);
   };
 
   const savePlayer = async () => {
