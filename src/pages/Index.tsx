@@ -319,11 +319,11 @@ const Index = () => {
                     <img
                       src={selectedPlayer.image_url}
                       alt={`${selectedPlayer.codename} full profile`}
-                      className="h-52 w-full rounded border border-border bg-muted object-contain"
+                      className="h-52 w-full rounded object-contain"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="h-52 w-full border border-border bg-muted" />
+                    <div className="h-52 w-full rounded bg-muted/40" />
                   )}
 
                   <div>
