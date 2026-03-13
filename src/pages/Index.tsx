@@ -377,7 +377,7 @@ const Index = () => {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="fixed left-0 top-0 z-50 p-6">
-        <Sheet open={playerMenuOpen} onOpenChange={setPlayerMenuOpen}>
+        <Sheet open={playerMenuOpen} onOpenChange={handlePlayerMenuOpenChange}>
           <SheetTrigger asChild>
             <Button variant="cathedral" size="sm" type="button" aria-label="Open player menu">
               <Menu className="h-4 w-4" />
