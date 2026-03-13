@@ -211,6 +211,7 @@ const Admin = () => {
       const contentPayload = Object.entries(content).map(([key, value]) => ({ key, content: value }));
       const { error } = await supabase.from("site_content").upsert(contentPayload, { onConflict: "key" });
       if (error) throw error;
+      await loadContent();
       toast.success("Content saved");
     } catch (error) {
       console.error("Error saving content:", error);
