@@ -164,6 +164,7 @@ const Index = () => {
     player_of_tournament: "",
     tournament_date: "",
     last_tournament_stats: "Latest tournament stats will appear here.",
+    leaderboard_photo_url: "",
     about_title: "About Velocity Vortex",
     about_description: "Velocity Vortex is a high-performance roster built for tactical precision, relentless pressure, and championship consistency.",
     facebook_url: "",
