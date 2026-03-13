@@ -33,6 +33,8 @@ interface SiteContent {
   discord_url: string;
 }
 
+type SiteContentKey = keyof SiteContent;
+
 interface Player {
   id: string;
   player_id: string;
