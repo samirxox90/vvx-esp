@@ -239,17 +239,27 @@ const Index = () => {
     );
   };
 
-  const playerAwards = useMemo(() => {
-    if (ratedPlayers.length === 0) return null;
+  const awardEntries = useMemo(() => {
+    if (ratedPlayers.length === 0) return [];
 
-    return {
-      playerOfMatch: findPlayerByManualValue(content.player_of_match),
-      playerOfMonth: findPlayerByManualValue(content.player_of_month),
-      playerOfSeason: findPlayerByManualValue(content.player_of_season),
-      playerOfTournament: findPlayerByManualValue(content.player_of_tournament),
-      tournamentDate: content.tournament_date,
-    };
+    return awardFieldConfig.map((award) => {
+      const manualValue = content[award.key as AwardFieldKey];
+      return {
+        ...award,
+        manualValue,
+        player: findPlayerByManualValue(manualValue),
+      };
+    });
   }, [ratedPlayers, content]);
+
+  const tournamentStatsLines = useMemo(
+    () =>
+      content.last_tournament_stats
+        .split(/\n|\|/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    [content.last_tournament_stats],
+  );
 
   const loadContent = async (isActive = true) => {
     try {
