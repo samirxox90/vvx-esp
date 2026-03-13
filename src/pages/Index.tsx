@@ -288,6 +288,14 @@ const Index = () => {
     });
   }, [ratedPlayers, content]);
 
+  const tournamentAwardEntry = useMemo(() => {
+    const manualValue = content.player_of_tournament;
+    return {
+      manualValue,
+      player: findPlayerByManualValue(manualValue),
+    };
+  }, [ratedPlayers, content.player_of_tournament]);
+
   const tournamentStatsLines = useMemo(
     () =>
       content.last_tournament_stats
