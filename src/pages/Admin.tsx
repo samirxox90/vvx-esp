@@ -140,6 +140,19 @@ const createNewPlayer = (): Player => ({
   updated_at: new Date().toISOString(),
 });
 
+const normalizePlayerForComparison = (player: Player) => ({
+  player_id: player.player_id?.trim() ?? "",
+  codename: player.codename?.trim() ?? "",
+  real_name: player.real_name?.trim() ?? "",
+  role: normalizeRole(player.role),
+  country: player.country?.trim() ?? "",
+  age: player.age ?? null,
+  bio: player.bio?.trim() ?? "",
+  image_url: player.image_url ?? "",
+  rating: getPlayerRatingValue(player.stats),
+  trends: player.trends ?? {},
+});
+
 const Admin = () => {
   const { isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
