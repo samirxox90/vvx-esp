@@ -468,7 +468,7 @@ const Index = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <p className="font-display text-2xl">{award.player?.codename ?? award.manualValue || "Not selected"}</p>
+                    <p className="font-display text-2xl">{award.player?.codename ?? (award.manualValue || "Not selected")}</p>
                     {award.player && (
                       <>
                         <p className="text-xs text-muted-foreground">UID: {award.player.player_id || "-"}</p>
