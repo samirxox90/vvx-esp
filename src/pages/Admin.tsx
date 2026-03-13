@@ -26,6 +26,7 @@ interface SiteContent {
   player_of_tournament: string;
   tournament_date: string;
   last_tournament_stats: string;
+  leaderboard_photo_url: string;
   about_title: string;
   about_description: string;
   facebook_url: string;
@@ -102,6 +103,7 @@ const Admin = () => {
     player_of_tournament: "",
     tournament_date: "",
     last_tournament_stats: "",
+    leaderboard_photo_url: "",
     about_title: "",
     about_description: "",
     facebook_url: "",
@@ -110,7 +112,8 @@ const Admin = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
-  const [uploading, setUploading] = useState(false);
+  const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
+  const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
