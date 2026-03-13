@@ -92,6 +92,21 @@ const getRatingDirection = (rating: number) => {
   };
 };
 
+const normalizeRole = (value: string | null) => {
+  if (!value) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized.includes("igl") || normalized.includes("leader")) return "IGL/Leader";
+  if (normalized.includes("rusher") || normalized.includes("entry")) return normalized.includes("entry") ? "Entry Fragger" : "Rusher";
+  if (normalized.includes("assaulter") || normalized.includes("assault")) return "Assaulter";
+  if (normalized.includes("support") || normalized.includes("supporter")) return "Supporter";
+  if (normalized.includes("boomber") || normalized.includes("bomber")) return "Boomber";
+
+  return value.trim();
+};
+
 const getRoleBadges = (role: string | null) => {
   const value = (role ?? "").toLowerCase();
   const badges: Array<{ key: string; label: string; icon: ReactNode; className: string }> = [];
@@ -200,7 +215,10 @@ const Index = () => {
     };
   }, []);
 
-  const ratedPlayers = useMemo(() => players.map((player) => ({ ...player, rating: getPlayerRating(player) })), [players]);
+  const ratedPlayers = useMemo(
+    () => players.map((player) => ({ ...player, role: normalizeRole(player.role), rating: getPlayerRating(player) })),
+    [players],
+  );
 
   useEffect(() => {
     if (ratedPlayers.length > 0 && !selectedPlayerId) {
@@ -285,6 +303,48 @@ const Index = () => {
       console.error("Error loading players:", error);
     }
   };
+
+  useEffect(() => {
+    let isActive = true;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let pollInterval = 4000;
+
+    const schedulePoll = () => {
+      timeoutId = setTimeout(async () => {
+        await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+        pollInterval = Math.min(Math.round(pollInterval * 1.5), 30000);
+        if (isActive) schedulePoll();
+      }, pollInterval);
+    };
+
+    const handleRealtimeUpdate = async () => {
+      pollInterval = 4000;
+      await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+    };
+
+    const contentChannel = supabase
+      .channel("site-content-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, () => {
+        void handleRealtimeUpdate();
+      })
+      .subscribe();
+
+    const playersChannel = supabase
+      .channel("player-stats-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_stats" }, () => {
+        void handleRealtimeUpdate();
+      })
+      .subscribe();
+
+    schedulePoll();
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      supabase.removeChannel(contentChannel);
+      supabase.removeChannel(playersChannel);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     try {

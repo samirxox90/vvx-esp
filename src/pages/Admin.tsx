@@ -50,6 +50,21 @@ interface Player {
 
 const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
 
+const normalizeRole = (value: string | null) => {
+  if (!value) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized.includes("igl") || normalized.includes("leader")) return "IGL/Leader";
+  if (normalized.includes("rusher") || normalized.includes("entry")) return normalized.includes("entry") ? "Entry Fragger" : "Rusher";
+  if (normalized.includes("assaulter") || normalized.includes("assault")) return "Assaulter";
+  if (normalized.includes("support") || normalized.includes("supporter")) return "Supporter";
+  if (normalized.includes("boomber") || normalized.includes("bomber")) return "Boomber";
+
+  return value.trim();
+};
+
 const createNewPlayer = (): Player => ({
   id: crypto.randomUUID(),
   player_id: "",
@@ -154,7 +169,10 @@ const Admin = () => {
       const { data, error } = await supabase.from("player_stats").select("*").order("codename");
       if (error) throw error;
 
-      const nextPlayers = (data || []) as Player[];
+      const nextPlayers = ((data || []) as Player[]).map((player) => ({
+        ...player,
+        role: normalizeRole(player.role),
+      }));
       setPlayers(nextPlayers);
       setSelectedPlayer((prevSelected) => {
         if (nextPlayers.length === 0) return null;
@@ -193,6 +211,7 @@ const Admin = () => {
       const contentPayload = Object.entries(content).map(([key, value]) => ({ key, content: value }));
       const { error } = await supabase.from("site_content").upsert(contentPayload, { onConflict: "key" });
       if (error) throw error;
+      await loadContent();
       toast.success("Content saved");
     } catch (error) {
       console.error("Error saving content:", error);
@@ -227,6 +246,8 @@ const Admin = () => {
     try {
       const playerToSave = {
         ...selectedPlayer,
+        role: normalizeRole(selectedPlayer.role),
+        updated_at: new Date().toISOString(),
         stats: {
           ...selectedPlayer.stats,
           rating,
@@ -236,7 +257,7 @@ const Admin = () => {
       const { error } = await supabase.from("player_stats").upsert(playerToSave, { onConflict: "id" });
       if (error) throw error;
       toast.success("Player saved");
-      void loadPlayers();
+      await loadPlayers();
     } catch (error) {
       console.error("Error saving player:", error);
       toast.error("Failed to save player");
@@ -478,7 +499,7 @@ const Admin = () => {
                   <Select
                     value={selectedPlayer.role || "__none__"}
                     onValueChange={(value) =>
-                      setSelectedPlayer({ ...selectedPlayer, role: value === "__none__" ? null : value })
+                      setSelectedPlayer({ ...selectedPlayer, role: value === "__none__" ? null : normalizeRole(value) })
                     }
                   >
                     <SelectTrigger>
