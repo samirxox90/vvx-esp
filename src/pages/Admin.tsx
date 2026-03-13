@@ -125,31 +125,37 @@ const formatUpdatedDate = (updatedAt: string) => {
   return date.toISOString().slice(0, 10);
 };
 
+const createNewPlayer = (): Player => ({
+  id: crypto.randomUUID(),
+  player_id: "",
+  codename: "New Member",
+  real_name: null,
+  role: null,
+  country: null,
+  age: null,
+  bio: null,
+  image_url: null,
+  stats: { rating: 1 },
+  trends: {},
+  updated_at: new Date().toISOString(),
+});
+
 const Admin = () => {
   const { isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [content, setContent] = useState<SiteContent>({
-    hero_title: "",
-    hero_tagline: "",
-    team_description: "",
-    player_of_match: "",
-    player_of_month: "",
-    player_of_season: "",
-    player_of_tournament: "",
-    tournament_date: "",
-    last_tournament_stats: "",
-    leaderboard_photo_url: "",
-    about_title: "",
-    about_description: "",
-    facebook_url: "",
-    discord_url: "",
-  });
+  const [content, setContent] = useState<SiteContent>(initialContent);
+  const [savedContent, setSavedContent] = useState<SiteContent>(initialContent);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
   const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
+  const awardsHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, awardsSectionFields);
+  const aboutHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, aboutSectionFields);
+  const hasAnyContentUnsavedChanges = heroHasUnsavedChanges || awardsHasUnsavedChanges || aboutHasUnsavedChanges;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
