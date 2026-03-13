@@ -220,6 +220,14 @@ const Index = () => {
     [players],
   );
 
+  const sortedPlayers = useMemo(() => {
+    return [...ratedPlayers].sort((a, b) => {
+      const priorityDiff = getRolePriority(a.role) - getRolePriority(b.role);
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.codename.localeCompare(b.codename);
+    });
+  }, [ratedPlayers]);
+
   useEffect(() => {
     if (sortedPlayers.length > 0 && !selectedPlayerId) {
       const iglLeaderPlayer = sortedPlayers.find((player) => {
