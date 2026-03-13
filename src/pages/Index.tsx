@@ -215,7 +215,10 @@ const Index = () => {
     };
   }, []);
 
-  const ratedPlayers = useMemo(() => players.map((player) => ({ ...player, rating: getPlayerRating(player) })), [players]);
+  const ratedPlayers = useMemo(
+    () => players.map((player) => ({ ...player, role: normalizeRole(player.role), rating: getPlayerRating(player) })),
+    [players],
+  );
 
   useEffect(() => {
     if (ratedPlayers.length > 0 && !selectedPlayerId) {
