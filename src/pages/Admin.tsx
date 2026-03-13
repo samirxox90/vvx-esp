@@ -26,6 +26,7 @@ interface SiteContent {
   player_of_tournament: string;
   tournament_date: string;
   last_tournament_stats: string;
+  leaderboard_photo_url: string;
   about_title: string;
   about_description: string;
   facebook_url: string;
@@ -102,6 +103,7 @@ const Admin = () => {
     player_of_tournament: "",
     tournament_date: "",
     last_tournament_stats: "",
+    leaderboard_photo_url: "",
     about_title: "",
     about_description: "",
     facebook_url: "",
@@ -110,7 +112,8 @@ const Admin = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
-  const [uploading, setUploading] = useState(false);
+  const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
+  const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -244,7 +247,7 @@ const Admin = () => {
 
   const uploadPlayerImage = async (file: File) => {
     if (!selectedPlayer) return;
-    setUploading(true);
+    setUploadingPlayerImage(true);
     try {
       const fileExt = file.name.split(".").pop();
       const safePlayerId = selectedPlayer.player_id.trim() || selectedPlayer.id;
@@ -263,7 +266,29 @@ const Admin = () => {
       console.error("Error uploading player image:", error);
       toast.error("Failed to upload image");
     } finally {
-      setUploading(false);
+      setUploadingPlayerImage(false);
+    }
+  };
+
+  const uploadLeaderboardImage = async (file: File) => {
+    setUploadingLeaderboardImage(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `leaderboard-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from("site-assets").upload(`tournaments/${fileName}`, file);
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("site-assets").getPublicUrl(`tournaments/${fileName}`);
+
+      setContent((prev) => ({ ...prev, leaderboard_photo_url: publicUrl }));
+      toast.success("Leaderboard photo uploaded");
+    } catch (error) {
+      console.error("Error uploading leaderboard image:", error);
+      toast.error("Failed to upload leaderboard photo");
+    } finally {
+      setUploadingLeaderboardImage(false);
     }
   };
 
@@ -342,6 +367,22 @@ const Admin = () => {
                   placeholder="Example: Maps Won: 4 | Kills: 289 | MVP: NYX"
                 />
               </div>
+              <div>
+                <Label>Leaderboard Photo (Optional)</Label>
+                {content.leaderboard_photo_url && (
+                  <img
+                    src={content.leaderboard_photo_url}
+                    alt="Last tournament leaderboard"
+                    className="mb-2 h-56 w-full rounded bg-muted object-contain"
+                  />
+                )}
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && uploadLeaderboardImage(e.target.files[0])}
+                  disabled={uploadingLeaderboardImage}
+                />
+              </div>
             </div>
 
             <div className="space-y-4 border border-border bg-background/40 p-4">
@@ -410,7 +451,7 @@ const Admin = () => {
                     type="file"
                     accept="image/*"
                     onChange={(e) => e.target.files?.[0] && uploadPlayerImage(e.target.files[0])}
-                    disabled={uploading}
+                    disabled={uploadingPlayerImage}
                   />
                 </div>
                 <div>

@@ -36,6 +36,7 @@ interface SiteContent {
   player_of_tournament: string;
   tournament_date: string;
   last_tournament_stats: string;
+  leaderboard_photo_url: string;
   about_title: string;
   about_description: string;
   facebook_url: string;
@@ -150,6 +151,15 @@ const getRolePriority = (role: string | null) => {
   return 5;
 };
 
+const awardFieldConfig = [
+  { key: "player_of_match", label: "Player of the Match", icon: Trophy },
+  { key: "player_of_month", label: "Player of the Month", icon: Star },
+  { key: "player_of_season", label: "Player of the Season", icon: Medal },
+  { key: "player_of_tournament", label: "Player of the Tournament", icon: Crown },
+] as const;
+
+type AwardFieldKey = (typeof awardFieldConfig)[number]["key"];
+
 const Index = () => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
@@ -163,6 +173,7 @@ const Index = () => {
     player_of_tournament: "",
     tournament_date: "",
     last_tournament_stats: "Latest tournament stats will appear here.",
+    leaderboard_photo_url: "",
     about_title: "About Velocity Vortex",
     about_description: "Velocity Vortex is a high-performance roster built for tactical precision, relentless pressure, and championship consistency.",
     facebook_url: "",
@@ -212,6 +223,7 @@ const Index = () => {
 
   const handlePlayerSelect = (playerId: string) => {
     setSelectedPlayerId(playerId);
+    setPlayerMenuOpen(false);
   };
 
   const findPlayerByManualValue = (manualValue: string) => {
@@ -227,17 +239,27 @@ const Index = () => {
     );
   };
 
-  const playerAwards = useMemo(() => {
-    if (ratedPlayers.length === 0) return null;
+  const awardEntries = useMemo(() => {
+    if (ratedPlayers.length === 0) return [];
 
-    return {
-      playerOfMatch: findPlayerByManualValue(content.player_of_match),
-      playerOfMonth: findPlayerByManualValue(content.player_of_month),
-      playerOfSeason: findPlayerByManualValue(content.player_of_season),
-      playerOfTournament: findPlayerByManualValue(content.player_of_tournament),
-      tournamentDate: content.tournament_date,
-    };
+    return awardFieldConfig.map((award) => {
+      const manualValue = content[award.key as AwardFieldKey];
+      return {
+        ...award,
+        manualValue,
+        player: findPlayerByManualValue(manualValue),
+      };
+    });
   }, [ratedPlayers, content]);
+
+  const tournamentStatsLines = useMemo(
+    () =>
+      content.last_tournament_stats
+        .split(/\n|\|/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    [content.last_tournament_stats],
+  );
 
   const loadContent = async (isActive = true) => {
     try {
@@ -318,11 +340,11 @@ const Index = () => {
                     <img
                       src={selectedPlayer.image_url}
                       alt={`${selectedPlayer.codename} full profile`}
-                      className="h-52 w-full rounded border border-border bg-muted object-contain"
+                      className="h-52 w-full rounded object-contain"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="h-52 w-full border border-border bg-muted" />
+                    <div className="h-52 w-full rounded bg-muted/40" />
                   )}
 
                   <div>
@@ -403,53 +425,64 @@ const Index = () => {
       </section>
 
 
-      {playerAwards && (
+      {awardEntries.length > 0 && (
         <section className="mx-auto max-w-7xl px-6 pb-20">
-          <h2 className="mb-8 text-center font-display text-4xl md:text-5xl">PLAYER AWARDS</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-card/40">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Trophy className="h-5 w-5" /> Player of the Match</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-2xl">{playerAwards.playerOfMatch?.codename ?? "Not selected"}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/40">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Star className="h-5 w-5" /> Player of the Month</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-2xl">{playerAwards.playerOfMonth?.codename ?? "Not selected"}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/40">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Medal className="h-5 w-5" /> Player of the Season</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-2xl">{playerAwards.playerOfSeason?.codename ?? "Not selected"}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/40">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Trophy className="h-5 w-5" /> Player of the Tournament</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-2xl">{playerAwards.playerOfTournament?.codename ?? "Not selected"}</p>
-                <p className="text-sm text-muted-foreground">Date: {playerAwards.tournamentDate || "Not set"}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="mt-4 bg-card/40">
+          <Card className="mb-6 bg-card/40">
             <CardHeader>
-              <CardTitle className="text-lg">Last Tournament Stats</CardTitle>
+              <CardTitle className="text-xl md:text-2xl">Last Tournament Stats</CardTitle>
+              <p className="text-sm text-muted-foreground">Date: {content.tournament_date || "Not set"}</p>
             </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-line text-sm text-muted-foreground">{content.last_tournament_stats || "No stats added yet."}</p>
+            <CardContent className="space-y-4">
+              {content.leaderboard_photo_url && (
+                <img
+                  src={content.leaderboard_photo_url}
+                  alt="Tournament leaderboard"
+                  className="h-64 w-full rounded object-contain"
+                  loading="lazy"
+                />
+              )}
+              {tournamentStatsLines.length > 0 ? (
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {tournamentStatsLines.map((line, index) => (
+                    <li key={`stats-line-${index}`} className="rounded border border-border/60 bg-background/40 px-3 py-2">
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No stats added yet.</p>
+              )}
             </CardContent>
           </Card>
+
+          <h2 className="mb-8 text-center font-display text-4xl md:text-5xl">PLAYER AWARDS</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {awardEntries.map((award) => {
+              const AwardIcon = award.icon;
+              return (
+                <Card key={award.key} className="bg-card/40">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <AwardIcon className="h-5 w-5" />
+                      {award.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="font-display text-2xl">{award.player?.codename ?? (award.manualValue || "Not selected")}</p>
+                    {award.player && (
+                      <>
+                        <p className="text-xs text-muted-foreground">UID: {award.player.player_id || "-"}</p>
+                        <p className="text-xs text-muted-foreground">Role: {award.player.role || "-"}</p>
+                        <p className={`text-sm ${getRatingToneClass(award.player.rating)}`}>
+                          Rating: {award.player.rating.toFixed(2)} / 10.00
+                        </p>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       )}
 
