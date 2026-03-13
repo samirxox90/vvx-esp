@@ -435,7 +435,7 @@ const Admin = () => {
                     type="file"
                     accept="image/*"
                     onChange={(e) => e.target.files?.[0] && uploadPlayerImage(e.target.files[0])}
-                    disabled={uploading}
+                    disabled={uploadingPlayerImage}
                   />
                 </div>
                 <div>
