@@ -499,7 +499,7 @@ const Index = () => {
         )}
       </header>
 
-      <section className="relative flex min-h-screen flex-col items-center justify-center border-b border-border bg-cathedral-slice px-6 py-20">
+      <section className="relative flex min-h-screen flex-col items-center justify-center border-b border-border bg-cathedral-slice px-6 pb-20 pt-32 md:px-10 md:pt-28">
         <img
           src={teamLogo}
           alt="Velocity Vortex X"
@@ -510,13 +510,21 @@ const Index = () => {
         <p className="max-w-3xl text-center text-muted-foreground">{content.team_description}</p>
       </section>
 
-
       {awardEntries.length > 0 && (
-        <section className="mx-auto max-w-7xl px-6 pb-20">
-          <Card className="mb-6 bg-card/40">
-            <CardHeader>
+        <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 md:px-10 md:pt-20">
+          <Card className="mb-8 bg-card/40">
+            <CardHeader className="space-y-3">
               <CardTitle className="text-xl md:text-2xl">Last Tournament Stats</CardTitle>
               <p className="text-sm text-muted-foreground">Date: {content.tournament_date || "Not set"}</p>
+              <div className="rounded border border-border/60 bg-background/40 px-3 py-2">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Player of the Tournament</p>
+                <p className="mt-1 font-display text-xl">
+                  {tournamentAwardEntry.player?.codename ?? (tournamentAwardEntry.manualValue || "Not selected")}
+                </p>
+                {tournamentAwardEntry.player && (
+                  <p className="text-xs text-muted-foreground">UID: {tournamentAwardEntry.player.player_id || "-"}</p>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {content.leaderboard_photo_url && (
@@ -542,7 +550,7 @@ const Index = () => {
           </Card>
 
           <h2 className="mb-8 text-center font-display text-4xl md:text-5xl">PLAYER AWARDS</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {awardEntries.map((award) => {
               const AwardIcon = award.icon;
               return (
@@ -572,7 +580,7 @@ const Index = () => {
         </section>
       )}
 
-      <section className="mx-auto max-w-7xl px-6 pb-24">
+      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
         <Card className="bg-card/40">
           <CardHeader>
             <CardTitle className="text-3xl">{content.about_title || "About"}</CardTitle>
