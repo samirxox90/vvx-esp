@@ -220,12 +220,6 @@ const Index = () => {
     [players],
   );
 
-  useEffect(() => {
-    if (ratedPlayers.length > 0 && !selectedPlayerId) {
-      setSelectedPlayerId(ratedPlayers[0].id);
-    }
-  }, [ratedPlayers, selectedPlayerId]);
-
   const sortedPlayers = useMemo(() => {
     return [...ratedPlayers].sort((a, b) => {
       const priorityDiff = getRolePriority(a.role) - getRolePriority(b.role);
@@ -234,14 +228,39 @@ const Index = () => {
     });
   }, [ratedPlayers]);
 
+  useEffect(() => {
+    if (sortedPlayers.length > 0 && !selectedPlayerId) {
+      const iglLeaderPlayer = sortedPlayers.find((player) => {
+        const value = (player.role ?? "").toLowerCase();
+        return value.includes("igl") || value.includes("leader");
+      });
+      setSelectedPlayerId((iglLeaderPlayer ?? sortedPlayers[0]).id);
+    }
+  }, [sortedPlayers, selectedPlayerId]);
+
   const selectedPlayer = useMemo(
     () => sortedPlayers.find((player) => player.id === selectedPlayerId) ?? sortedPlayers[0] ?? null,
     [sortedPlayers, selectedPlayerId],
   );
 
+  const defaultMenuPlayer = useMemo(() => {
+    return (
+      sortedPlayers.find((player) => {
+        const value = (player.role ?? "").toLowerCase();
+        return value.includes("igl") || value.includes("leader");
+      }) ?? sortedPlayers[0] ?? null
+    );
+  }, [sortedPlayers]);
+
+  const handlePlayerMenuOpenChange = (open: boolean) => {
+    setPlayerMenuOpen(open);
+    if (open && defaultMenuPlayer) {
+      setSelectedPlayerId(defaultMenuPlayer.id);
+    }
+  };
+
   const handlePlayerSelect = (playerId: string) => {
     setSelectedPlayerId(playerId);
-    setPlayerMenuOpen(false);
   };
 
   const findPlayerByManualValue = (manualValue: string) => {
@@ -366,7 +385,7 @@ const Index = () => {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="fixed left-0 top-0 z-50 p-6">
-        <Sheet open={playerMenuOpen} onOpenChange={setPlayerMenuOpen}>
+        <Sheet open={playerMenuOpen} onOpenChange={handlePlayerMenuOpenChange}>
           <SheetTrigger asChild>
             <Button variant="cathedral" size="sm" type="button" aria-label="Open player menu">
               <Menu className="h-4 w-4" />
