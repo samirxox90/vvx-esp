@@ -304,6 +304,48 @@ const Index = () => {
     }
   };
 
+  useEffect(() => {
+    let isActive = true;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let pollInterval = 4000;
+
+    const schedulePoll = () => {
+      timeoutId = setTimeout(async () => {
+        await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+        pollInterval = Math.min(Math.round(pollInterval * 1.5), 30000);
+        if (isActive) schedulePoll();
+      }, pollInterval);
+    };
+
+    const handleRealtimeUpdate = async () => {
+      pollInterval = 4000;
+      await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+    };
+
+    const contentChannel = supabase
+      .channel("site-content-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, () => {
+        void handleRealtimeUpdate();
+      })
+      .subscribe();
+
+    const playersChannel = supabase
+      .channel("player-stats-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_stats" }, () => {
+        void handleRealtimeUpdate();
+      })
+      .subscribe();
+
+    schedulePoll();
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      supabase.removeChannel(contentChannel);
+      supabase.removeChannel(playersChannel);
+    };
+  }, []);
+
   const handleSignOut = async () => {
     try {
       await signOut();
