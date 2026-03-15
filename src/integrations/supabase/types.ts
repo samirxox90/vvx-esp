@@ -29,6 +29,148 @@ export type Database = {
         }
         Relationships: []
       }
+      inbox_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          recipient_user_id: string
+          related_report_id: string | null
+          sender_user_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          recipient_user_id: string
+          related_report_id?: string | null
+          sender_user_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          recipient_user_id?: string
+          related_report_id?: string | null
+          sender_user_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_notifications_related_report_id_fkey"
+            columns: ["related_report_id"]
+            isOneToOne: false
+            referencedRelation: "player_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      join_applications: {
+        Row: {
+          created_at: string
+          game_uid: string
+          gameplay_clip: string
+          id: string
+          in_game_name: string
+          playing_role: string
+          real_name: string
+          status: string
+          updated_at: string
+          user_id: string
+          whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          game_uid: string
+          gameplay_clip: string
+          id?: string
+          in_game_name: string
+          playing_role: string
+          real_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          game_uid?: string
+          gameplay_clip?: string
+          id?: string
+          in_game_name?: string
+          playing_role?: string
+          real_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      notification_allowlist: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          email: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          email: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          email?: string
+        }
+        Relationships: []
+      }
+      player_reports: {
+        Row: {
+          created_at: string
+          description: string
+          forwarded_at: string | null
+          forwarded_to_user_id: string | null
+          id: string
+          player_id: string
+          reporter_user_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          forwarded_at?: string | null
+          forwarded_to_user_id?: string | null
+          id?: string
+          player_id: string
+          reporter_user_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          forwarded_at?: string | null
+          forwarded_to_user_id?: string | null
+          id?: string
+          player_id?: string
+          reporter_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_reports_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "player_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_stats: {
         Row: {
           age: number | null
@@ -124,7 +266,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      forward_report_to_player: {
+        Args: { _message: string; _recipient_email: string; _report_id: string }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
+      send_inbox_notification_to_email: {
+        Args: {
+          _message: string
+          _recipient_email: string
+          _related_report_id?: string
+          _title: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
