@@ -246,6 +246,34 @@ const Admin = () => {
     }
   };
 
+  const loadApplications = async () => {
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.from("join_applications").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      setApplications((data ?? []) as JoinApplication[]);
+    } catch (error) {
+      console.error("Error loading applications:", error);
+      toast.error("Failed to load applications");
+    }
+  };
+
+  const updateApplicationStatus = async (applicationId: string, status: "accepted" | "rejected") => {
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { error } = await db.from("join_applications").update({ status }).eq("id", applicationId);
+      if (error) throw error;
+      setApplications((prev) => prev.map((application) => (application.id === applicationId ? { ...application, status } : application)));
+      toast.success(`Application ${status}`);
+    } catch (error) {
+      console.error("Error updating application:", error);
+      toast.error("Failed to update application");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const setAwardValue = (field: AwardFieldKey, value: string) => {
     setContent((prev) => ({ ...prev, [field]: value }));
   };
