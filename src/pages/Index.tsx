@@ -483,20 +483,29 @@ const Index = () => {
         </Sheet>
       </header>
 
-      <header className="fixed right-0 top-0 z-50 flex items-center gap-3 p-6">
+      <header className="fixed right-0 top-0 z-50 flex items-center gap-2 p-4 md:gap-3 md:p-6">
         {user ? (
           <>
+            <Button variant="cathedral" size="sm" onClick={() => navigate("/apply")} aria-label="Apply to join team">
+              <UserPlus className="h-4 w-4" />
+            </Button>
+            <Button variant="cathedral" size="sm" onClick={() => navigate("/report")} aria-label="Report a player">
+              <FileWarning className="h-4 w-4" />
+            </Button>
+            <Button variant="cathedral" size="sm" onClick={() => navigate("/inbox")} aria-label="Open inbox notifications">
+              <Bell className="h-4 w-4" />
+            </Button>
             {isAdmin && (
-              <Button variant="hero" size="sm" onClick={() => navigate("/admin")}>
+              <Button variant="hero" size="sm" onClick={() => navigate("/admin")} aria-label="Open admin panel">
                 <Settings className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>
           </>
         ) : (
-          <Button variant="cathedral" size="sm" onClick={() => navigate("/login")}>
+          <Button variant="cathedral" size="sm" onClick={() => navigate("/login")} aria-label="Login">
             <LogIn className="h-4 w-4" />
           </Button>
         )}
