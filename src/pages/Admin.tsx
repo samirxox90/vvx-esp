@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Check, Save, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +78,19 @@ interface Player {
   stats: Record<string, number>;
   trends: Record<string, number[]>;
   updated_at: string;
+}
+
+interface JoinApplication {
+  id: string;
+  user_id: string;
+  real_name: string;
+  in_game_name: string;
+  game_uid: string;
+  gameplay_clip: string;
+  playing_role: string;
+  whatsapp: string;
+  status: string;
+  created_at: string;
 }
 
 const roleOptions = ["Rusher", "Assaulter", "Supporter", "Boomber", "IGL/Leader", "Entry Fragger"];
@@ -159,6 +172,7 @@ const Admin = () => {
   const [content, setContent] = useState<SiteContent>(initialContent);
   const [savedContent, setSavedContent] = useState<SiteContent>(initialContent);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [applications, setApplications] = useState<JoinApplication[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
@@ -185,8 +199,7 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      void loadContent();
-      void loadPlayers();
+      void Promise.all([loadContent(), loadPlayers(), loadApplications()]);
     }
   }, [isAdmin]);
 
@@ -230,6 +243,34 @@ const Admin = () => {
     } catch (error) {
       console.error("Error loading players:", error);
       toast.error("Failed to load players");
+    }
+  };
+
+  const loadApplications = async () => {
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.from("join_applications").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      setApplications((data ?? []) as JoinApplication[]);
+    } catch (error) {
+      console.error("Error loading applications:", error);
+      toast.error("Failed to load applications");
+    }
+  };
+
+  const updateApplicationStatus = async (applicationId: string, status: "accepted" | "rejected") => {
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { error } = await db.from("join_applications").update({ status }).eq("id", applicationId);
+      if (error) throw error;
+      setApplications((prev) => prev.map((application) => (application.id === applicationId ? { ...application, status } : application)));
+      toast.success(`Application ${status}`);
+    } catch (error) {
+      console.error("Error updating application:", error);
+      toast.error("Failed to update application");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -540,6 +581,72 @@ const Admin = () => {
               <Save className="mr-2 h-4 w-4" /> Save All Site Content
             </Button>
           </div>
+        </section>
+
+        <section className="mb-12 border border-border bg-card/40 p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl">Applications</h2>
+            <Badge variant="secondary">{applications.length} total</Badge>
+          </div>
+
+          {applications.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No applications submitted yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {applications.map((application) => {
+                const statusVariant: "secondary" | "destructive" | "outline" =
+                  application.status === "accepted"
+                    ? "secondary"
+                    : application.status === "rejected"
+                      ? "destructive"
+                      : "outline";
+
+                return (
+                  <div key={application.id} className="rounded border border-border bg-background/40 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-display text-lg">{application.in_game_name}</p>
+                        <p className="text-xs text-muted-foreground">Real Name: {application.real_name}</p>
+                      </div>
+                      <Badge variant={statusVariant}>{application.status}</Badge>
+                    </div>
+
+                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                      <p>Game UID: {application.game_uid}</p>
+                      <p>Playing Role: {application.playing_role}</p>
+                      <p>WhatsApp: {application.whatsapp}</p>
+                      <p>Submitted: {new Date(application.created_at).toLocaleString()}</p>
+                      <p className="md:col-span-2">
+                        Gameplay Clip:{" "}
+                        <a href={application.gameplay_clip} target="_blank" rel="noreferrer" className="text-primary underline-offset-4 hover:underline">
+                          Open Clip
+                        </a>
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="hero"
+                        onClick={() => updateApplicationStatus(application.id, "accepted")}
+                        disabled={saving || application.status === "accepted"}
+                      >
+                        <Check className="mr-2 h-4 w-4" /> Accept
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => updateApplicationStatus(application.id, "rejected")}
+                        disabled={saving || application.status === "rejected"}
+                      >
+                        <X className="mr-2 h-4 w-4" /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="border border-border bg-card/40 p-6">

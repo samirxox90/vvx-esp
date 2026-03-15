@@ -88,8 +88,8 @@ const Inbox = () => {
     }
   }, [loading, user, isAdmin, navigate]);
 
-  const loadData = async () => {
-    setPageLoading(true);
+  const loadData = async (withSpinner = true) => {
+    if (withSpinner) setPageLoading(true);
     try {
       const db = supabase as any;
 
@@ -128,9 +128,24 @@ const Inbox = () => {
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to load inbox");
     } finally {
-      setPageLoading(false);
+      if (withSpinner) setPageLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`inbox-live-${user.id}-${isAdmin ? "admin" : "user"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "inbox_notifications" }, () => {
+        void loadData(false);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, isAdmin]);
 
   const markAsRead = async (id: string) => {
     try {
