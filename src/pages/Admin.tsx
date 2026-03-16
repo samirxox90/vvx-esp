@@ -452,6 +452,14 @@ const Admin = () => {
               <Textarea value={content.team_description} onChange={(e) => setContent({ ...content, team_description: e.target.value })} />
             </div>
             <div>
+              <Label>Featured Video Title</Label>
+              <Input
+                value={content.featured_video_title}
+                onChange={(e) => setContent({ ...content, featured_video_title: e.target.value })}
+                placeholder="Grand Finals Highlights"
+              />
+            </div>
+            <div>
               <Label>Featured Video URL</Label>
               <Input
                 value={content.featured_video_url}

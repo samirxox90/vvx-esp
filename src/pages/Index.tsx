@@ -550,7 +550,7 @@ const Index = () => {
       {content.featured_video_thumbnail_url && (
         <section className="border-b border-border bg-card/20 px-6 pb-8 pt-20 md:px-10 md:pb-10 md:pt-24">
           <div className="mx-auto max-w-7xl">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Featured Video</p>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">{content.featured_video_title || "Featured Video"}</p>
             {content.featured_video_url ? (
               <a
                 href={content.featured_video_url}
