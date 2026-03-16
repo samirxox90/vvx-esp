@@ -20,6 +20,7 @@ import {
   UserPlus,
   FileWarning,
   Bell,
+  CirclePlay,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,8 @@ interface SiteContent {
   hero_title: string;
   hero_tagline: string;
   team_description: string;
+  featured_video_url: string;
+  featured_video_thumbnail_url: string;
   player_of_match: string;
   player_of_month: string;
   player_of_season: string;
@@ -184,6 +187,8 @@ const Index = () => {
     hero_title: "VELOCITY VORTEX X",
     hero_tagline: "Precision. Speed. Dominance.",
     team_description: "Elite esports performance powered by data and discipline.",
+    featured_video_url: "",
+    featured_video_thumbnail_url: "",
     player_of_match: "",
     player_of_month: "",
     player_of_season: "",
@@ -510,6 +515,42 @@ const Index = () => {
           </Button>
         )}
       </header>
+
+      {content.featured_video_thumbnail_url && (
+        <section className="border-b border-border bg-card/20 px-6 pb-8 pt-20 md:px-10 md:pb-10 md:pt-24">
+          <div className="mx-auto max-w-7xl">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Featured Video</p>
+            {content.featured_video_url ? (
+              <a
+                href={content.featured_video_url}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block overflow-hidden rounded border border-border"
+                aria-label="Open featured team video"
+              >
+                <img
+                  src={content.featured_video_thumbnail_url}
+                  alt="Featured team video thumbnail"
+                  className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] md:h-72"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-2 text-sm font-medium text-foreground">
+                    <CirclePlay className="h-4 w-4" /> Play Video
+                  </span>
+                </div>
+              </a>
+            ) : (
+              <img
+                src={content.featured_video_thumbnail_url}
+                alt="Featured team video thumbnail"
+                className="h-52 w-full rounded border border-border object-cover md:h-72"
+                loading="lazy"
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="relative flex min-h-screen flex-col items-center justify-center border-b border-border bg-cathedral-slice px-6 pb-20 pt-32 md:px-10 md:pt-28">
         <img
