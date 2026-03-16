@@ -397,6 +397,7 @@ const Index = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      setLogoutConfirmOpen(false);
       toast.success("Signed out");
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to sign out");
