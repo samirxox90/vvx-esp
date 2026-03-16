@@ -199,6 +199,7 @@ const Index = () => {
     hero_title: "VELOCITY VORTEX X",
     hero_tagline: "Precision. Speed. Dominance.",
     team_description: "Elite esports performance powered by data and discipline.",
+    featured_video_title: "",
     featured_video_url: "",
     featured_video_thumbnail_url: "",
     player_of_match: "",
