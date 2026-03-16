@@ -42,6 +42,8 @@ const initialContent: SiteContent = {
   hero_title: "",
   hero_tagline: "",
   team_description: "",
+  featured_video_url: "",
+  featured_video_thumbnail_url: "",
   player_of_match: "",
   player_of_month: "",
   player_of_season: "",
@@ -55,7 +57,13 @@ const initialContent: SiteContent = {
   discord_url: "",
 };
 
-const heroSectionFields: SiteContentKey[] = ["hero_title", "hero_tagline", "team_description"];
+const heroSectionFields: SiteContentKey[] = [
+  "hero_title",
+  "hero_tagline",
+  "team_description",
+  "featured_video_url",
+  "featured_video_thumbnail_url",
+];
 const awardsSectionFields: SiteContentKey[] = [
   "player_of_match",
   "player_of_month",
