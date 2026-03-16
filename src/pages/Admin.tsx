@@ -21,6 +21,7 @@ interface SiteContent {
   hero_title: string;
   hero_tagline: string;
   team_description: string;
+  featured_video_title: string;
   featured_video_url: string;
   featured_video_thumbnail_url: string;
   player_of_match: string;
@@ -42,6 +43,7 @@ const initialContent: SiteContent = {
   hero_title: "",
   hero_tagline: "",
   team_description: "",
+  featured_video_title: "",
   featured_video_url: "",
   featured_video_thumbnail_url: "",
   player_of_match: "",
@@ -61,6 +63,7 @@ const heroSectionFields: SiteContentKey[] = [
   "hero_title",
   "hero_tagline",
   "team_description",
+  "featured_video_title",
   "featured_video_url",
   "featured_video_thumbnail_url",
 ];
@@ -447,6 +450,14 @@ const Admin = () => {
             <div>
               <Label>Team Description</Label>
               <Textarea value={content.team_description} onChange={(e) => setContent({ ...content, team_description: e.target.value })} />
+            </div>
+            <div>
+              <Label>Featured Video Title</Label>
+              <Input
+                value={content.featured_video_title}
+                onChange={(e) => setContent({ ...content, featured_video_title: e.target.value })}
+                placeholder="Grand Finals Highlights"
+              />
             </div>
             <div>
               <Label>Featured Video URL</Label>
