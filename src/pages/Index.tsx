@@ -12,6 +12,7 @@ import {
   Shield,
   Zap,
   Crown,
+  Crosshair,
   TrendingUp,
   TrendingDown,
   Facebook,
@@ -118,8 +119,9 @@ const normalizeRole = (value: string | null) => {
 
   if (normalized.includes("igl") || normalized.includes("leader")) return "IGL/Leader";
   if (normalized.includes("rusher") || normalized.includes("entry")) return normalized.includes("entry") ? "Entry Fragger" : "Rusher";
-  if (normalized.includes("assaulter") || normalized.includes("assault")) return "Assaulter";
   if (normalized.includes("support") || normalized.includes("supporter")) return "Supporter";
+  if (normalized.includes("sniper") || normalized.includes("awp")) return "Sniper";
+  if (normalized.includes("assaulter") || normalized.includes("assault")) return "Assaulter";
   if (normalized.includes("boomber") || normalized.includes("bomber")) return "Boomber";
 
   return value.trim();
@@ -133,31 +135,39 @@ const getRoleBadges = (role: string | null) => {
     badges.push({
       key: "rusher",
       label: "Rusher",
-      icon: <Flame className="h-3.5 w-3.5" />,
+      icon: <Flame className="h-3.5 w-3.5 animate-role-rusher" />,
       className: "border-primary/40 bg-primary/15 text-primary",
-    });
-  }
-  if (value.includes("assaulter") || value.includes("assault")) {
-    badges.push({
-      key: "assaulter",
-      label: "Assaulter",
-      icon: <Swords className="h-3.5 w-3.5" />,
-      className: "border-accent/50 bg-accent/20 text-accent-foreground",
     });
   }
   if (value.includes("support") || value.includes("supporter")) {
     badges.push({
       key: "supporter",
       label: "Supporter",
-      icon: <Shield className="h-3.5 w-3.5" />,
+      icon: <Shield className="h-3.5 w-3.5 animate-role-supporter" />,
       className: "border-secondary/60 bg-secondary/50 text-secondary-foreground",
+    });
+  }
+  if (value.includes("sniper") || value.includes("awp")) {
+    badges.push({
+      key: "sniper",
+      label: "Sniper",
+      icon: <Crosshair className="h-3.5 w-3.5 animate-role-sniper" />,
+      className: "border-highlight/40 bg-highlight/15 text-highlight",
+    });
+  }
+  if (value.includes("assaulter") || value.includes("assault")) {
+    badges.push({
+      key: "assaulter",
+      label: "Assaulter",
+      icon: <Swords className="h-3.5 w-3.5 animate-role-assaulter" />,
+      className: "border-accent/50 bg-accent/20 text-accent-foreground",
     });
   }
   if (value.includes("boomber") || value.includes("bomber")) {
     badges.push({
       key: "boomber",
       label: "Boomber",
-      icon: <Zap className="h-3.5 w-3.5" />,
+      icon: <Zap className="h-3.5 w-3.5 animate-role-boomber" />,
       className: "border-destructive/40 bg-destructive/10 text-destructive",
     });
   }
@@ -165,7 +175,7 @@ const getRoleBadges = (role: string | null) => {
     badges.push({
       key: "leader",
       label: "IGL / Leader",
-      icon: <Crown className="h-3.5 w-3.5" />,
+      icon: <Crown className="h-3.5 w-3.5 animate-role-leader" />,
       className: "border-highlight/40 bg-highlight/15 text-highlight",
     });
   }
@@ -178,10 +188,11 @@ const getRolePriority = (role: string | null) => {
 
   if (value.includes("igl") || value.includes("leader")) return 0;
   if (value.includes("rusher") || value.includes("entry")) return 1;
-  if (value.includes("assaulter") || value.includes("assault")) return 2;
-  if (value.includes("support") || value.includes("supporter")) return 3;
-  if (value.includes("boomber") || value.includes("bomber")) return 4;
-  return 5;
+  if (value.includes("support") || value.includes("supporter")) return 2;
+  if (value.includes("sniper") || value.includes("awp")) return 3;
+  if (value.includes("assaulter") || value.includes("assault")) return 4;
+  if (value.includes("boomber") || value.includes("bomber")) return 5;
+  return 6;
 };
 
 const awardFieldConfig = [
