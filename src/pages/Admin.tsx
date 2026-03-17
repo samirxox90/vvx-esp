@@ -711,6 +711,34 @@ const Admin = () => {
           )}
         </section>
 
+        <section className="mb-12 border border-border bg-card/40 p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl">System Users</h2>
+            <Badge variant="secondary">{registeredUsers.length} total</Badge>
+          </div>
+
+          {usersLoading ? (
+            <p className="text-sm text-muted-foreground">Loading users...</p>
+          ) : registeredUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No registered users found.</p>
+          ) : (
+            <div className="space-y-3">
+              {registeredUsers.map((user) => (
+                <div key={user.user_id} className="rounded border border-border bg-background/40 p-4">
+                  <p className="text-sm">
+                    <span className="font-semibold">Email:</span> {user.email ?? "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">User ID: {user.user_id}</p>
+                  <p className="text-xs text-muted-foreground">Created: {new Date(user.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Email Verified: {user.email_confirmed_at ? new Date(user.email_confirmed_at).toLocaleString() : "Not verified"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="border border-border bg-card/40 p-6">
           <div className="mb-6 flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl">Player Editor</h2>
