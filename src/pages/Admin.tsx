@@ -21,6 +21,9 @@ interface SiteContent {
   hero_title: string;
   hero_tagline: string;
   team_description: string;
+  featured_video_title: string;
+  featured_video_url: string;
+  featured_video_thumbnail_url: string;
   player_of_match: string;
   player_of_month: string;
   player_of_season: string;
@@ -40,6 +43,9 @@ const initialContent: SiteContent = {
   hero_title: "",
   hero_tagline: "",
   team_description: "",
+  featured_video_title: "",
+  featured_video_url: "",
+  featured_video_thumbnail_url: "",
   player_of_match: "",
   player_of_month: "",
   player_of_season: "",
@@ -53,7 +59,14 @@ const initialContent: SiteContent = {
   discord_url: "",
 };
 
-const heroSectionFields: SiteContentKey[] = ["hero_title", "hero_tagline", "team_description"];
+const heroSectionFields: SiteContentKey[] = [
+  "hero_title",
+  "hero_tagline",
+  "team_description",
+  "featured_video_title",
+  "featured_video_url",
+  "featured_video_thumbnail_url",
+];
 const awardsSectionFields: SiteContentKey[] = [
   "player_of_match",
   "player_of_month",
@@ -437,6 +450,30 @@ const Admin = () => {
             <div>
               <Label>Team Description</Label>
               <Textarea value={content.team_description} onChange={(e) => setContent({ ...content, team_description: e.target.value })} />
+            </div>
+            <div>
+              <Label>Featured Video Title</Label>
+              <Input
+                value={content.featured_video_title}
+                onChange={(e) => setContent({ ...content, featured_video_title: e.target.value })}
+                placeholder="Grand Finals Highlights"
+              />
+            </div>
+            <div>
+              <Label>Featured Video URL</Label>
+              <Input
+                value={content.featured_video_url}
+                onChange={(e) => setContent({ ...content, featured_video_url: e.target.value })}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </div>
+            <div>
+              <Label>Featured Video Thumbnail URL (Top of Website)</Label>
+              <Input
+                value={content.featured_video_thumbnail_url}
+                onChange={(e) => setContent({ ...content, featured_video_thumbnail_url: e.target.value })}
+                placeholder="https://.../thumbnail.jpg"
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3">

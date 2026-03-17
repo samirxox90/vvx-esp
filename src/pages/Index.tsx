@@ -20,9 +20,21 @@ import {
   UserPlus,
   FileWarning,
   Bell,
+  CirclePlay,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +45,9 @@ interface SiteContent {
   hero_title: string;
   hero_tagline: string;
   team_description: string;
+  featured_video_title: string;
+  featured_video_url: string;
+  featured_video_thumbnail_url: string;
   player_of_match: string;
   player_of_month: string;
   player_of_season: string;
@@ -184,6 +199,9 @@ const Index = () => {
     hero_title: "VELOCITY VORTEX X",
     hero_tagline: "Precision. Speed. Dominance.",
     team_description: "Elite esports performance powered by data and discipline.",
+    featured_video_title: "",
+    featured_video_url: "",
+    featured_video_thumbnail_url: "",
     player_of_match: "",
     player_of_month: "",
     player_of_season: "",
@@ -199,6 +217,7 @@ const Index = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [playerMenuOpen, setPlayerMenuOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -378,6 +397,7 @@ const Index = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      setLogoutConfirmOpen(false);
       toast.success("Signed out");
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to sign out");
@@ -483,33 +503,85 @@ const Index = () => {
         </Sheet>
       </header>
 
-      <header className="fixed right-0 top-0 z-50 flex items-center gap-2 p-4 md:gap-3 md:p-6">
+      <header className="fixed right-2 top-2 z-50 flex max-w-[calc(100vw-1rem)] flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-background/70 p-2 backdrop-blur-sm md:right-6 md:top-6 md:max-w-none md:flex-nowrap md:border-0 md:bg-transparent md:p-0">
         {user ? (
           <>
-            <Button variant="cathedral" size="sm" onClick={() => navigate("/apply")} aria-label="Apply to join team">
+            <Button variant="cathedral" size="icon" onClick={() => navigate("/apply")} aria-label="Apply to join team">
               <UserPlus className="h-4 w-4" />
             </Button>
-            <Button variant="cathedral" size="sm" onClick={() => navigate("/report")} aria-label="Report a player">
+            <Button variant="cathedral" size="icon" onClick={() => navigate("/report")} aria-label="Report a player">
               <FileWarning className="h-4 w-4" />
             </Button>
-            <Button variant="cathedral" size="sm" onClick={() => navigate("/inbox")} aria-label="Open inbox notifications">
+            <Button variant="cathedral" size="icon" onClick={() => navigate("/inbox")} aria-label="Open inbox notifications">
               <Bell className="h-4 w-4" />
             </Button>
             {isAdmin && (
-              <Button variant="hero" size="sm" onClick={() => navigate("/admin")} aria-label="Open admin panel">
+              <Button variant="hero" size="icon" onClick={() => navigate("/admin")} aria-label="Open admin panel">
                 <Settings className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={handleSignOut} aria-label="Sign out">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Log out?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You will need to sign in again to access your account.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void handleSignOut()}>Log out</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         ) : (
-          <Button variant="cathedral" size="sm" onClick={() => navigate("/login")} aria-label="Login">
+          <Button variant="cathedral" size="icon" onClick={() => navigate("/login")} aria-label="Login">
             <LogIn className="h-4 w-4" />
           </Button>
         )}
       </header>
+
+      {content.featured_video_thumbnail_url && (
+        <section className="border-b border-border bg-card/20 px-6 pb-8 pt-20 md:px-10 md:pb-10 md:pt-24">
+          <div className="mx-auto max-w-7xl">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">{content.featured_video_title || "Featured Video"}</p>
+            {content.featured_video_url ? (
+              <a
+                href={content.featured_video_url}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block overflow-hidden rounded border border-border"
+                aria-label="Open featured team video"
+              >
+                <img
+                  src={content.featured_video_thumbnail_url}
+                  alt="Featured team video thumbnail"
+                  className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] md:h-72"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-2 text-sm font-medium text-foreground">
+                    <CirclePlay className="h-4 w-4" /> Play Video
+                  </span>
+                </div>
+              </a>
+            ) : (
+              <img
+                src={content.featured_video_thumbnail_url}
+                alt="Featured team video thumbnail"
+                className="h-52 w-full rounded border border-border object-cover md:h-72"
+                loading="lazy"
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="relative flex min-h-screen flex-col items-center justify-center border-b border-border bg-cathedral-slice px-6 pb-20 pt-32 md:px-10 md:pt-28">
         <img
