@@ -281,6 +281,21 @@ const Admin = () => {
     }
   };
 
+  const loadRegisteredUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.rpc("admin_list_registered_users");
+      if (error) throw error;
+      setRegisteredUsers((data ?? []) as RegisteredUser[]);
+    } catch (error) {
+      console.error("Error loading registered users:", error);
+      toast.error("Failed to load registered users");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   const updateApplicationStatus = async (applicationId: string, status: "accepted" | "rejected") => {
     setSaving(true);
     try {
