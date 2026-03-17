@@ -194,10 +194,12 @@ const Admin = () => {
   const [savedContent, setSavedContent] = useState<SiteContent>(initialContent);
   const [players, setPlayers] = useState<Player[]>([]);
   const [applications, setApplications] = useState<JoinApplication[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
   const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
@@ -220,7 +222,7 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      void Promise.all([loadContent(), loadPlayers(), loadApplications()]);
+      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers()]);
     }
   }, [isAdmin]);
 
