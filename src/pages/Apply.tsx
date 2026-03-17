@@ -6,17 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const applyRoleOptions = ["Rusher", "Supporter", "Sniper", "Assaulter", "Boomber"] as const;
 
 const applySchema = z.object({
   real_name: z.string().trim().min(2, "Real name is required").max(80, "Too long"),
   in_game_name: z.string().trim().min(2, "In-Game name is required").max(40, "Too long"),
   game_uid: z.string().trim().min(3, "Game UID is required").max(60, "Too long"),
   gameplay_clip: z.string().trim().url("Gameplay clip must be a valid URL"),
-  playing_role: z.string().trim().min(2, "Playing role is required").max(40, "Too long"),
+  playing_role: z
+    .string()
+    .trim()
+    .refine((value) => applyRoleOptions.includes(value as (typeof applyRoleOptions)[number]), "Please select a valid role"),
   whatsapp: z
     .string()
     .trim()
@@ -129,15 +140,24 @@ const Apply = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="playing_role">Playing Role</Label>
-                  <Input
-                    id="playing_role"
-                    value={form.playing_role}
-                    onChange={(e) => handleChange("playing_role", e.target.value)}
+                  <Label>Playing Role</Label>
+                  <Select
+                    value={form.playing_role || "__none__"}
+                    onValueChange={(value) => handleChange("playing_role", value === "__none__" ? "" : value)}
                     disabled={submitting}
-                    placeholder="Rusher / IGL / Support"
-                    required
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select role</SelectItem>
+                      {applyRoleOptions.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
