@@ -266,6 +266,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_registered_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          email_confirmed_at: string
+          user_id: string
+        }[]
+      }
       forward_report_to_player: {
         Args: { _message: string; _recipient_email: string; _report_id: string }
         Returns: string

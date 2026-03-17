@@ -106,6 +106,13 @@ interface JoinApplication {
   created_at: string;
 }
 
+interface RegisteredUser {
+  user_id: string;
+  email: string | null;
+  created_at: string;
+  email_confirmed_at: string | null;
+}
+
 const roleOptions = ["Rusher", "Supporter", "Sniper", "Assaulter", "Boomber", "IGL/Leader", "Entry Fragger"];
 
 const normalizeRole = (value: string | null) => {
@@ -187,10 +194,12 @@ const Admin = () => {
   const [savedContent, setSavedContent] = useState<SiteContent>(initialContent);
   const [players, setPlayers] = useState<Player[]>([]);
   const [applications, setApplications] = useState<JoinApplication[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
   const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
@@ -213,7 +222,7 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      void Promise.all([loadContent(), loadPlayers(), loadApplications()]);
+      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers()]);
     }
   }, [isAdmin]);
 
@@ -269,6 +278,21 @@ const Admin = () => {
     } catch (error) {
       console.error("Error loading applications:", error);
       toast.error("Failed to load applications");
+    }
+  };
+
+  const loadRegisteredUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.rpc("admin_list_registered_users");
+      if (error) throw error;
+      setRegisteredUsers((data ?? []) as RegisteredUser[]);
+    } catch (error) {
+      console.error("Error loading registered users:", error);
+      toast.error("Failed to load registered users");
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -683,6 +707,34 @@ const Admin = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        <section className="mb-12 border border-border bg-card/40 p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl">System Users</h2>
+            <Badge variant="secondary">{registeredUsers.length} total</Badge>
+          </div>
+
+          {usersLoading ? (
+            <p className="text-sm text-muted-foreground">Loading users...</p>
+          ) : registeredUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No registered users found.</p>
+          ) : (
+            <div className="space-y-3">
+              {registeredUsers.map((user) => (
+                <div key={user.user_id} className="rounded border border-border bg-background/40 p-4">
+                  <p className="text-sm">
+                    <span className="font-semibold">Email:</span> {user.email ?? "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">User ID: {user.user_id}</p>
+                  <p className="text-xs text-muted-foreground">Created: {new Date(user.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Email Verified: {user.email_confirmed_at ? new Date(user.email_confirmed_at).toLocaleString() : "Not verified"}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </section>
