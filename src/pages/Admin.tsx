@@ -88,6 +88,8 @@ interface Player {
   age: number | null;
   bio: string | null;
   image_url: string | null;
+  banned_matches: number;
+  ban_reason: string | null;
   stats: Record<string, number>;
   trends: Record<string, number[]>;
   updated_at: string;
@@ -169,6 +171,8 @@ const createNewPlayer = (): Player => ({
   age: null,
   bio: null,
   image_url: null,
+  banned_matches: 0,
+  ban_reason: null,
   stats: { rating: 1 },
   trends: {},
   updated_at: new Date().toISOString(),
@@ -183,6 +187,8 @@ const normalizePlayerForComparison = (player: Player) => ({
   age: player.age ?? null,
   bio: player.bio?.trim() ?? "",
   image_url: player.image_url ?? "",
+  banned_matches: Math.max(0, Number(player.banned_matches ?? 0)),
+  ban_reason: player.ban_reason?.trim() ?? "",
   rating: getPlayerRatingValue(player.stats),
   trends: player.trends ?? {},
 });
@@ -250,12 +256,15 @@ const Admin = () => {
 
   const loadPlayers = async () => {
     try {
-      const { data, error } = await supabase.from("player_stats").select("*").order("codename");
+      const db = supabase as any;
+      const { data, error } = await db.from("player_stats").select("*").order("codename");
       if (error) throw error;
 
       const nextPlayers = ((data || []) as Player[]).map((player) => ({
         ...player,
         role: normalizeRole(player.role),
+        banned_matches: Math.max(0, Number(player.banned_matches ?? 0)),
+        ban_reason: player.ban_reason ?? null,
       }));
       setPlayers(nextPlayers);
       setSelectedPlayer((prevSelected) => {
@@ -378,6 +387,8 @@ const Admin = () => {
       const playerToSave = {
         ...selectedPlayer,
         role: normalizeRole(selectedPlayer.role),
+        banned_matches: Math.max(0, Number(selectedPlayer.banned_matches ?? 0)),
+        ban_reason: (selectedPlayer.ban_reason ?? "").trim() || null,
         updated_at: new Date().toISOString(),
         stats: {
           ...selectedPlayer.stats,
@@ -385,7 +396,8 @@ const Admin = () => {
         },
       };
 
-      const { error } = await supabase.from("player_stats").upsert(playerToSave, { onConflict: "id" });
+      const db = supabase as any;
+      const { error } = await db.from("player_stats").upsert(playerToSave, { onConflict: "id" });
       if (error) throw error;
       toast.success("Player saved");
       await loadPlayers();
@@ -834,6 +846,29 @@ const Admin = () => {
                 <div>
                   <Label>Bio</Label>
                   <Textarea value={selectedPlayer.bio || ""} onChange={(e) => setSelectedPlayer({ ...selectedPlayer, bio: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Banned for Matches</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={selectedPlayer.banned_matches ?? 0}
+                    onChange={(e) =>
+                      setSelectedPlayer({
+                        ...selectedPlayer,
+                        banned_matches: Math.max(0, Number.parseInt(e.target.value || "0", 10) || 0),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Ban Reason</Label>
+                  <Textarea
+                    value={selectedPlayer.ban_reason || ""}
+                    onChange={(e) => setSelectedPlayer({ ...selectedPlayer, ban_reason: e.target.value })}
+                    placeholder="Reason for ban (optional)"
+                  />
                 </div>
               </div>
 

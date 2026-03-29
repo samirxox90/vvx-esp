@@ -84,6 +84,10 @@ const Login = () => {
           <Button variant="hero" type="submit" className="w-full" disabled={loading}>
             {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
           </Button>
+
+          <Button type="button" variant="cathedral" className="w-full" onClick={() => navigate("/")} disabled={loading}>
+            Continue as Guest
+          </Button>
         </form>
 
         <div className="border-t border-border pt-4 text-center">

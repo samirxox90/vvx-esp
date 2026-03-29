@@ -72,6 +72,8 @@ interface Player {
   age: number | null;
   bio: string | null;
   image_url: string | null;
+  banned_matches: number;
+  ban_reason: string | null;
   stats: Record<string, number>;
   updated_at: string;
 }
@@ -295,6 +297,16 @@ const Index = () => {
     setSelectedPlayerId(playerId);
   };
 
+  const requireLoginFor = (route: string, feature: string) => {
+    if (user) {
+      navigate(route);
+      return;
+    }
+
+    toast.error(`Login required to ${feature}`);
+    navigate("/login");
+  };
+
   const findPlayerByManualValue = (manualValue: string) => {
     const normalized = manualValue.trim().toLowerCase();
     if (!normalized) return null;
@@ -353,10 +365,17 @@ const Index = () => {
 
   const loadPlayers = async (isActive = true) => {
     try {
-      const { data, error } = await supabase.from("player_stats").select("*").order("codename");
+      const db = supabase as any;
+      const { data, error } = await db.from("player_stats").select("*").order("codename");
       if (error) throw error;
       if (isActive) {
-        setPlayers((data || []) as Player[]);
+        setPlayers(
+          ((data || []) as Player[]).map((player) => ({
+            ...player,
+            banned_matches: Math.max(0, Number(player.banned_matches ?? 0)),
+            ban_reason: player.ban_reason ?? null,
+          })),
+        );
       }
     } catch (error) {
       console.error("Error loading players:", error);
@@ -480,6 +499,15 @@ const Index = () => {
                     <p><span className="text-muted-foreground">Age:</span> {selectedPlayer.age ?? "-"}</p>
                   </div>
 
+                  {selectedPlayer.banned_matches > 0 && (
+                    <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                      <p className="font-medium">
+                        Banned for {selectedPlayer.banned_matches} match{selectedPlayer.banned_matches > 1 ? "es" : ""}
+                      </p>
+                      <p className="mt-1 text-xs">Reason: {selectedPlayer.ban_reason?.trim() || "Not specified"}</p>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <span
                       className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${getRatingDirection(selectedPlayer.rating).badgeClass}`}
@@ -515,17 +543,18 @@ const Index = () => {
       </header>
 
       <header className="fixed right-2 top-2 z-50 flex max-w-[calc(100vw-1rem)] flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-background/70 p-2 backdrop-blur-sm md:right-6 md:top-6 md:max-w-none md:flex-nowrap md:border-0 md:bg-transparent md:p-0">
+        <Button variant="cathedral" size="icon" onClick={() => requireLoginFor("/apply", "apply for the team")} aria-label="Apply to join team">
+          <UserPlus className="h-4 w-4" />
+        </Button>
+        <Button variant="cathedral" size="icon" onClick={() => requireLoginFor("/report", "report a player")} aria-label="Report a player">
+          <FileWarning className="h-4 w-4" />
+        </Button>
+        <Button variant="cathedral" size="icon" onClick={() => requireLoginFor("/inbox", "open inbox notifications")} aria-label="Open inbox notifications">
+          <Bell className="h-4 w-4" />
+        </Button>
+
         {user ? (
           <>
-            <Button variant="cathedral" size="icon" onClick={() => navigate("/apply")} aria-label="Apply to join team">
-              <UserPlus className="h-4 w-4" />
-            </Button>
-            <Button variant="cathedral" size="icon" onClick={() => navigate("/report")} aria-label="Report a player">
-              <FileWarning className="h-4 w-4" />
-            </Button>
-            <Button variant="cathedral" size="icon" onClick={() => navigate("/inbox")} aria-label="Open inbox notifications">
-              <Bell className="h-4 w-4" />
-            </Button>
             {isAdmin && (
               <Button variant="hero" size="icon" onClick={() => navigate("/admin")} aria-label="Open admin panel">
                 <Settings className="h-4 w-4" />

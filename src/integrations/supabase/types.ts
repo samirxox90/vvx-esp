@@ -174,6 +174,8 @@ export type Database = {
       player_stats: {
         Row: {
           age: number | null
+          ban_reason: string | null
+          banned_matches: number
           bio: string | null
           codename: string
           country: string | null
@@ -188,6 +190,8 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          ban_reason?: string | null
+          banned_matches?: number
           bio?: string | null
           codename: string
           country?: string | null
@@ -202,6 +206,8 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          ban_reason?: string | null
+          banned_matches?: number
           bio?: string | null
           codename?: string
           country?: string | null
@@ -280,6 +286,10 @@ export type Database = {
         Returns: string
       }
       is_admin: { Args: never; Returns: boolean }
+      send_inbox_notification_by_audience: {
+        Args: { _audience: string; _message: string; _title: string }
+        Returns: number
+      }
       send_inbox_notification_to_email: {
         Args: {
           _message: string
