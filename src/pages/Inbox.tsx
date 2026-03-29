@@ -40,10 +40,24 @@ interface ReportItem {
 }
 
 const notificationSchema = z.object({
-  recipientEmail: z.string().trim().email("Recipient email is invalid"),
+  audience: z.enum(["single", "all_verified_users", "team_members_only"]),
+  recipientEmail: z.string().trim().optional(),
   title: z.string().trim().min(2, "Title is required").max(120, "Title is too long"),
   message: z.string().trim().min(4, "Message is required").max(2000, "Message is too long"),
+}).superRefine((data, ctx) => {
+  if (data.audience === "single") {
+    const emailValidation = z.string().trim().email("Recipient email is invalid").safeParse(data.recipientEmail ?? "");
+    if (!emailValidation.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Recipient email is invalid",
+        path: ["recipientEmail"],
+      });
+    }
+  }
 });
+
+type NotificationAudience = "single" | "all_verified_users" | "team_members_only";
 
 const forwardSchema = z.object({
   reportId: z.string().uuid("Select a report first"),
@@ -64,6 +78,7 @@ const Inbox = () => {
   const [allowlistEmails, setAllowlistEmails] = useState<string[]>([]);
 
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [notificationAudience, setNotificationAudience] = useState<NotificationAudience>("single");
   const [notificationTitle, setNotificationTitle] = useState("");
   const [notificationMessage, setNotificationMessage] = useState("");
 
@@ -160,6 +175,7 @@ const Inbox = () => {
 
   const sendNotification = async () => {
     const parsed = notificationSchema.safeParse({
+      audience: notificationAudience,
       recipientEmail,
       title: notificationTitle,
       message: notificationMessage,
@@ -173,17 +189,29 @@ const Inbox = () => {
     setSaving(true);
     try {
       const db = supabase as any;
-      const { error } = await db.rpc("send_inbox_notification_to_email", {
-        _recipient_email: parsed.data.recipientEmail,
-        _title: parsed.data.title,
-        _message: parsed.data.message,
-        _related_report_id: null,
-      });
-      if (error) throw error;
+
+      if (parsed.data.audience === "single") {
+        const { error } = await db.rpc("send_inbox_notification_to_email", {
+          _recipient_email: parsed.data.recipientEmail,
+          _title: parsed.data.title,
+          _message: parsed.data.message,
+          _related_report_id: null,
+        });
+        if (error) throw error;
+        toast.success("Notification sent");
+      } else {
+        const { data, error } = await db.rpc("send_inbox_notification_by_audience", {
+          _audience: parsed.data.audience,
+          _title: parsed.data.title,
+          _message: parsed.data.message,
+        });
+        if (error) throw error;
+        toast.success(`Notification sent to ${Number(data ?? 0)} user(s)`);
+      }
+
       setRecipientEmail("");
       setNotificationTitle("");
       setNotificationMessage("");
-      toast.success("Notification sent");
       await loadData();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to send notification");
@@ -345,9 +373,31 @@ const Inbox = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <Label>Recipient Email (must be verified + allowlisted)</Label>
-                  <Input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} disabled={saving} />
+                  <Label>Audience</Label>
+                  <Select
+                    value={notificationAudience}
+                    onValueChange={(value) => {
+                      setNotificationAudience(value as NotificationAudience);
+                      setRecipientEmail("");
+                    }}
+                    disabled={saving}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select audience" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single verified + allowlisted user</SelectItem>
+                      <SelectItem value="all_verified_users">All verified website users</SelectItem>
+                      <SelectItem value="team_members_only">Team members only (accepted)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {notificationAudience === "single" && (
+                  <div className="space-y-2">
+                    <Label>Recipient Email (must be verified + allowlisted)</Label>
+                    <Input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} disabled={saving} />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Title</Label>
                   <Input value={notificationTitle} onChange={(e) => setNotificationTitle(e.target.value)} disabled={saving} />
