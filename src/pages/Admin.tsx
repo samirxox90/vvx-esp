@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Save, X } from "lucide-react";
+import { ArrowLeft, Check, Save, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,7 +257,10 @@ const Admin = () => {
   const loadPlayers = async () => {
     try {
       const db = supabase as any;
-      const { data, error } = await db.from("player_stats").select("*").order("codename");
+      const { data, error } = await db
+        .from("player_stats")
+        .select("id, player_id, codename, real_name, role, country, age, bio, image_url, banned_matches, ban_reason, stats, trends, updated_at")
+        .order("codename", { ascending: true });
       if (error) throw error;
 
       const nextPlayers = ((data || []) as Player[]).map((player) => ({
@@ -265,6 +268,8 @@ const Admin = () => {
         role: normalizeRole(player.role),
         banned_matches: Math.max(0, Number(player.banned_matches ?? 0)),
         ban_reason: player.ban_reason ?? null,
+        stats: player.stats ?? {},
+        trends: player.trends ?? {},
       }));
       setPlayers(nextPlayers);
       setSelectedPlayer((prevSelected) => {
@@ -274,7 +279,33 @@ const Admin = () => {
       });
     } catch (error) {
       console.error("Error loading players:", error);
-      toast.error("Failed to load players");
+      toast.error(error instanceof Error ? `Failed to load players: ${error.message}` : "Failed to load players");
+    }
+  };
+
+  const removePlayer = async (playerToRemove: Player) => {
+    const confirmed = window.confirm(`Remove ${playerToRemove.codename}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { error } = await db.from("player_stats").delete().eq("id", playerToRemove.id);
+      if (error) throw error;
+
+      setPlayers((prev) => prev.filter((player) => player.id !== playerToRemove.id));
+      setSelectedPlayer((prevSelected) => {
+        if (!prevSelected || prevSelected.id !== playerToRemove.id) return prevSelected;
+        const remaining = players.filter((player) => player.id !== playerToRemove.id);
+        return remaining[0] ?? null;
+      });
+
+      toast.success("Player removed");
+    } catch (error) {
+      console.error("Error removing player:", error);
+      toast.error(error instanceof Error ? `Failed to remove player: ${error.message}` : "Failed to remove player");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -763,9 +794,54 @@ const Admin = () => {
               Add Player/Member
             </Button>
             {players.map((player) => (
-              <Button key={player.id} variant={selectedPlayer?.id === player.id ? "hero" : "cathedral"} onClick={() => setSelectedPlayer(player)}>
-                {player.codename}
-              </Button>
+              <div key={player.id} className="flex items-center gap-2">
+                <Button variant={selectedPlayer?.id === player.id ? "hero" : "cathedral"} onClick={() => setSelectedPlayer(player)}>
+                  {player.codename}
+                </Button>
+                <Button type="button" variant="destructive" size="icon" onClick={() => removePlayer(player)} disabled={saving}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-6 space-y-3">
+            {players.map((player) => (
+              <div key={`details-${player.id}`} className="rounded border border-border bg-background/40 p-4 text-sm">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <p>
+                    <span className="font-semibold">Codename:</span> {player.codename}
+                  </p>
+                  <p>
+                    <span className="font-semibold">In-Game UID:</span> {player.player_id}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Real Name:</span> {player.real_name || "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Role:</span> {player.role || "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Country:</span> {player.country || "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Age:</span> {player.age ?? "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Rating:</span> {getPlayerRatingValue(player.stats).toFixed(2)}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Banned Matches:</span> {Math.max(0, Number(player.banned_matches ?? 0))}
+                  </p>
+                  <p className="md:col-span-2">
+                    <span className="font-semibold">Ban Reason:</span> {player.ban_reason || "-"}
+                  </p>
+                  <p className="md:col-span-2">
+                    <span className="font-semibold">Bio:</span> {player.bio || "-"}
+                  </p>
+                  <p className="md:col-span-2 text-xs text-muted-foreground">Last Updated: {new Date(player.updated_at).toLocaleString()}</p>
+                </div>
+              </div>
             ))}
           </div>
 
