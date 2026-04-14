@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarClock, Check, Megaphone, Save, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,7 +115,52 @@ interface RegisteredUser {
   email_confirmed_at: string | null;
 }
 
+interface Tournament {
+  id: string;
+  title: string;
+  schedule_at: string;
+  status: "pending" | "running" | "completed";
+  squad_main: string[];
+  squad_extra: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+interface TournamentFormState {
+  id: string | null;
+  title: string;
+  schedule_at: string;
+  status: "pending" | "running" | "completed";
+  squad_main_1: string;
+  squad_main_2: string;
+  squad_main_3: string;
+  squad_main_4: string;
+  squad_extra: string;
+  notes: string;
+}
+
 const roleOptions = ["Rusher", "Supporter", "Sniper", "Assaulter", "Boomber", "IGL/Leader", "Entry Fragger"];
+
+const createEmptyTournamentForm = (): TournamentFormState => ({
+  id: null,
+  title: "",
+  schedule_at: "",
+  status: "pending",
+  squad_main_1: "",
+  squad_main_2: "",
+  squad_main_3: "",
+  squad_main_4: "",
+  squad_extra: "",
+  notes: "",
+});
+
+const toDateTimeLocal = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60_000);
+  return local.toISOString().slice(0, 16);
+};
 
 const normalizeRole = (value: string | null) => {
   if (!value) return null;
@@ -194,18 +239,24 @@ const normalizePlayerForComparison = (player: Player) => ({
 });
 
 const Admin = () => {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [content, setContent] = useState<SiteContent>(initialContent);
   const [savedContent, setSavedContent] = useState<SiteContent>(initialContent);
   const [players, setPlayers] = useState<Player[]>([]);
   const [applications, setApplications] = useState<JoinApplication[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>("__new__");
+  const [tournamentForm, setTournamentForm] = useState<TournamentFormState>(createEmptyTournamentForm());
+  const [inviteTitle, setInviteTitle] = useState("Tournament Invite");
+  const [inviteMessage, setInviteMessage] = useState("Do you want to play our next tournament?");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
   const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
@@ -228,9 +279,36 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers()]);
+      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers(), loadTournaments()]);
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (selectedTournamentId === "__new__") {
+      setTournamentForm(createEmptyTournamentForm());
+      return;
+    }
+
+    const selectedTournament = tournaments.find((item) => item.id === selectedTournamentId);
+    if (!selectedTournament) {
+      setTournamentForm(createEmptyTournamentForm());
+      return;
+    }
+
+    const [squad1 = "", squad2 = "", squad3 = "", squad4 = ""] = selectedTournament.squad_main ?? [];
+    setTournamentForm({
+      id: selectedTournament.id,
+      title: selectedTournament.title,
+      schedule_at: toDateTimeLocal(selectedTournament.schedule_at),
+      status: selectedTournament.status,
+      squad_main_1: squad1,
+      squad_main_2: squad2,
+      squad_main_3: squad3,
+      squad_main_4: squad4,
+      squad_extra: selectedTournament.squad_extra ?? "",
+      notes: selectedTournament.notes ?? "",
+    });
+  }, [selectedTournamentId, tournaments]);
 
   useEffect(() => {
     if (!selectedPlayer) return;
@@ -333,6 +411,129 @@ const Admin = () => {
       toast.error("Failed to load registered users");
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const loadTournaments = async () => {
+    setTournamentsLoading(true);
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.from("tournaments").select("*").order("schedule_at", { ascending: true });
+      if (error) throw error;
+      setTournaments((data ?? []) as Tournament[]);
+    } catch (error) {
+      console.error("Error loading tournaments:", error);
+      toast.error(error instanceof Error ? `Failed to load tournaments: ${error.message}` : "Failed to load tournaments");
+    } finally {
+      setTournamentsLoading(false);
+    }
+  };
+
+  const saveTournament = async () => {
+    if (!tournamentForm.title.trim()) {
+      toast.error("Tournament title is required");
+      return;
+    }
+
+    if (!tournamentForm.schedule_at) {
+      toast.error("Tournament schedule is required");
+      return;
+    }
+
+    const squadMain = [
+      tournamentForm.squad_main_1,
+      tournamentForm.squad_main_2,
+      tournamentForm.squad_main_3,
+      tournamentForm.squad_main_4,
+    ].map((item) => item.trim());
+
+    if (squadMain.some((item) => !item)) {
+      toast.error("Please fill all 4 main squad players");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const payload = {
+        title: tournamentForm.title.trim(),
+        schedule_at: new Date(tournamentForm.schedule_at).toISOString(),
+        status: tournamentForm.status,
+        squad_main: squadMain,
+        squad_extra: tournamentForm.squad_extra.trim() || null,
+        notes: tournamentForm.notes.trim() || null,
+        created_by: user?.id ?? null,
+      };
+
+      if (tournamentForm.id) {
+        const { error } = await db.from("tournaments").update(payload).eq("id", tournamentForm.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await db.from("tournaments").insert(payload).select("id").single();
+        if (error) throw error;
+        if (data?.id) setSelectedTournamentId(data.id);
+      }
+
+      await loadTournaments();
+      toast.success("Tournament saved");
+    } catch (error) {
+      console.error("Error saving tournament:", error);
+      toast.error(error instanceof Error ? `Failed to save tournament: ${error.message}` : "Failed to save tournament");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteTournament = async () => {
+    if (!tournamentForm.id) {
+      toast.error("Select a saved tournament first");
+      return;
+    }
+
+    const selectedTournament = tournaments.find((item) => item.id === tournamentForm.id);
+    const confirmed = window.confirm(`Delete tournament \"${selectedTournament?.title ?? "this tournament"}\"?`);
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { error } = await db.from("tournaments").delete().eq("id", tournamentForm.id);
+      if (error) throw error;
+
+      setSelectedTournamentId("__new__");
+      setTournamentForm(createEmptyTournamentForm());
+      await loadTournaments();
+      toast.success("Tournament removed");
+    } catch (error) {
+      console.error("Error deleting tournament:", error);
+      toast.error(error instanceof Error ? `Failed to delete tournament: ${error.message}` : "Failed to delete tournament");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTournamentInvites = async () => {
+    const tournamentId = tournamentForm.id;
+    if (!tournamentId) {
+      toast.error("Select a saved tournament first");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.rpc("admin_send_tournament_invites", {
+        _tournament_id: tournamentId,
+        _title: inviteTitle,
+        _message: inviteMessage,
+      });
+      if (error) throw error;
+      toast.success(`Invites sent to ${Number(data ?? 0)} team member(s)`);
+    } catch (error) {
+      console.error("Error sending tournament invites:", error);
+      toast.error(error instanceof Error ? `Failed to send invites: ${error.message}` : "Failed to send invites");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -685,6 +886,156 @@ const Admin = () => {
             <Button type="button" variant="hero" onClick={saveContent} disabled={saving || !hasAnyContentUnsavedChanges}>
               <Save className="mr-2 h-4 w-4" /> Save All Site Content
             </Button>
+          </div>
+        </section>
+
+        <section className="mb-12 border border-border bg-card/40 p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl">Tournament Control Center</h2>
+            <Badge variant="secondary">{tournaments.length} total</Badge>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-3 rounded border border-border bg-background/40 p-4">
+              <div className="space-y-2">
+                <Label>Choose Tournament</Label>
+                <Select value={selectedTournamentId} onValueChange={setSelectedTournamentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tournament" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__">+ New Tournament</SelectItem>
+                    {tournaments.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.title} ({item.status})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tournament Title</Label>
+                <Input value={tournamentForm.title} onChange={(e) => setTournamentForm((prev) => ({ ...prev, title: e.target.value }))} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Schedule Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={tournamentForm.schedule_at}
+                    onChange={(e) => setTournamentForm((prev) => ({ ...prev, schedule_at: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={tournamentForm.status}
+                    onValueChange={(value) =>
+                      setTournamentForm((prev) => ({ ...prev, status: value as TournamentFormState["status"] }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="running">Running</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Squad Main Players (4 Required)</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder="Main Player 1"
+                    value={tournamentForm.squad_main_1}
+                    onChange={(e) => setTournamentForm((prev) => ({ ...prev, squad_main_1: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Main Player 2"
+                    value={tournamentForm.squad_main_2}
+                    onChange={(e) => setTournamentForm((prev) => ({ ...prev, squad_main_2: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Main Player 3"
+                    value={tournamentForm.squad_main_3}
+                    onChange={(e) => setTournamentForm((prev) => ({ ...prev, squad_main_3: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Main Player 4"
+                    value={tournamentForm.squad_main_4}
+                    onChange={(e) => setTournamentForm((prev) => ({ ...prev, squad_main_4: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Extra Player (1)</Label>
+                <Input
+                  placeholder="Extra player"
+                  value={tournamentForm.squad_extra}
+                  onChange={(e) => setTournamentForm((prev) => ({ ...prev, squad_extra: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea value={tournamentForm.notes} onChange={(e) => setTournamentForm((prev) => ({ ...prev, notes: e.target.value }))} />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="hero" onClick={saveTournament} disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" /> Save Tournament
+                </Button>
+                <Button type="button" variant="destructive" onClick={deleteTournament} disabled={saving || !tournamentForm.id}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Remove Tournament
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded border border-border bg-background/40 p-4">
+              <h3 className="font-display text-xl">Send Participation Invite</h3>
+              <p className="text-xs text-muted-foreground">Targets verified, allowlisted team members with accepted applications.</p>
+
+              <div className="space-y-2">
+                <Label>Notification Title</Label>
+                <Input value={inviteTitle} onChange={(e) => setInviteTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Notification Message</Label>
+                <Textarea value={inviteMessage} onChange={(e) => setInviteMessage(e.target.value)} />
+              </div>
+
+              <Button type="button" variant="hero" onClick={sendTournamentInvites} disabled={saving || !tournamentForm.id}>
+                <Megaphone className="mr-2 h-4 w-4" /> Send To Team Members
+              </Button>
+
+              <div className="space-y-2 pt-3">
+                <h4 className="font-display text-lg">Upcoming + Running</h4>
+                {tournamentsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading tournaments...</p>
+                ) : tournaments.filter((item) => item.status !== "completed").length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No pending or running tournaments.</p>
+                ) : (
+                  tournaments
+                    .filter((item) => item.status !== "completed")
+                    .map((item) => (
+                      <div key={item.id} className="rounded border border-border px-3 py-2 text-sm">
+                        <p className="font-medium">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <CalendarClock className="mr-1 inline h-3.5 w-3.5" />
+                          {new Date(item.schedule_at).toLocaleString()} • {item.status}
+                        </p>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
           </div>
         </section>
 

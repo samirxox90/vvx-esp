@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -76,6 +76,23 @@ interface Player {
   ban_reason: string | null;
   stats: Record<string, number>;
   updated_at: string;
+}
+
+interface Tournament {
+  id: string;
+  title: string;
+  schedule_at: string;
+  status: "pending" | "running" | "completed";
+  squad_main: string[];
+  squad_extra: string | null;
+  notes: string | null;
+}
+
+interface TournamentParticipation {
+  id: string;
+  user_id: string;
+  response: "pending" | "accepted" | "rejected";
+  tournament_id: string;
 }
 
 const clampRating = (value: number) => {
@@ -228,17 +245,21 @@ const Index = () => {
     discord_url: "",
   });
   const [players, setPlayers] = useState<Player[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [myParticipations, setMyParticipations] = useState<TournamentParticipation[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [playerMenuOpen, setPlayerMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let isActive = true;
 
     const initializePage = async () => {
       setLoading(true);
-      await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+      await Promise.all([loadContent(isActive), loadPlayers(isActive), loadTournaments(isActive), loadUnreadCount(isActive)]);
       if (isActive) setLoading(false);
     };
 
@@ -382,6 +403,57 @@ const Index = () => {
     }
   };
 
+  const loadTournaments = async (isActive = true) => {
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.from("tournaments").select("*").order("schedule_at", { ascending: true });
+      if (error) throw error;
+      if (isActive) setTournaments((data ?? []) as Tournament[]);
+    } catch (error) {
+      console.error("Error loading tournaments:", error);
+    }
+  };
+
+  const loadMyParticipations = async (isActive = true) => {
+    if (!user) {
+      if (isActive) setMyParticipations([]);
+      return;
+    }
+
+    try {
+      const db = supabase as any;
+      const { data, error } = await db
+        .from("tournament_participations")
+        .select("id, tournament_id, user_id, response")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      if (isActive) setMyParticipations((data ?? []) as TournamentParticipation[]);
+    } catch (error) {
+      console.error("Error loading tournament participations:", error);
+    }
+  };
+
+  const loadUnreadCount = async (isActive = true) => {
+    if (!user) {
+      if (isActive) setUnreadCount(0);
+      return;
+    }
+
+    try {
+      const db = supabase as any;
+      const { count, error } = await db
+        .from("inbox_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_user_id", user.id)
+        .eq("is_read", false);
+
+      if (error) throw error;
+      if (isActive) setUnreadCount(count ?? 0);
+    } catch (error) {
+      console.error("Error loading unread count:", error);
+    }
+  };
+
   useEffect(() => {
     let isActive = true;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -389,7 +461,7 @@ const Index = () => {
 
     const schedulePoll = () => {
       timeoutId = setTimeout(async () => {
-        await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+        await Promise.all([loadContent(isActive), loadPlayers(isActive), loadTournaments(isActive), loadMyParticipations(isActive), loadUnreadCount(isActive)]);
         pollInterval = Math.min(Math.round(pollInterval * 1.5), 30000);
         if (isActive) schedulePoll();
       }, pollInterval);
@@ -397,7 +469,7 @@ const Index = () => {
 
     const handleRealtimeUpdate = async () => {
       pollInterval = 4000;
-      await Promise.all([loadContent(isActive), loadPlayers(isActive)]);
+      await Promise.all([loadContent(isActive), loadPlayers(isActive), loadTournaments(isActive), loadMyParticipations(isActive), loadUnreadCount(isActive)]);
     };
 
     const contentChannel = supabase
@@ -414,6 +486,63 @@ const Index = () => {
       })
       .subscribe();
 
+    const tournamentsChannel = supabase
+      .channel("tournaments-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
+        void handleRealtimeUpdate();
+      })
+      .subscribe();
+
+    const notificationsChannel = user
+      ? supabase
+          .channel(`index-notification-live-${user.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "inbox_notifications", filter: `recipient_user_id=eq.${user.id}` },
+            async (payload: any) => {
+              await loadUnreadCount(isActive);
+
+              if (payload.eventType !== "INSERT") return;
+
+              const notificationId = payload.new?.id as string | undefined;
+              if (!notificationId || seenNotificationIdsRef.current.has(notificationId)) return;
+              seenNotificationIdsRef.current.add(notificationId);
+
+              const title = payload.new?.title ?? "New Notification";
+              const message = payload.new?.message ?? "You have a new update.";
+              toast.success(`${title}: ${message}`);
+
+              if (typeof window !== "undefined" && "Notification" in window) {
+                if (Notification.permission === "default") {
+                  Notification.requestPermission().catch(() => undefined);
+                }
+
+                if (Notification.permission === "granted") {
+                  const browserNotification = new Notification(title, {
+                    body: message,
+                    icon: teamLogo,
+                  });
+
+                  browserNotification.onclick = () => {
+                    window.focus();
+                    navigate("/inbox");
+                  };
+                }
+              }
+            },
+          )
+          .subscribe()
+      : null;
+
+    const participationsChannel = user
+      ? supabase
+          .channel(`participations-live-${user.id}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: "tournament_participations", filter: `user_id=eq.${user.id}` }, () => {
+            void loadMyParticipations(isActive);
+          })
+          .subscribe()
+      : null;
+
     schedulePoll();
 
     return () => {
@@ -421,8 +550,30 @@ const Index = () => {
       if (timeoutId) clearTimeout(timeoutId);
       supabase.removeChannel(contentChannel);
       supabase.removeChannel(playersChannel);
+      supabase.removeChannel(tournamentsChannel);
+      if (notificationsChannel) supabase.removeChannel(notificationsChannel);
+      if (participationsChannel) supabase.removeChannel(participationsChannel);
     };
-  }, []);
+  }, [user?.id, navigate]);
+
+  useEffect(() => {
+    let isActive = true;
+    void Promise.all([loadMyParticipations(isActive), loadUnreadCount(isActive)]);
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
+
+  const tournamentCards = useMemo(() => {
+    const participationByTournament = new Map(myParticipations.map((item) => [item.tournament_id, item]));
+    return tournaments
+      .filter((item) => item.status === "pending" || item.status === "running")
+      .sort((a, b) => new Date(a.schedule_at).getTime() - new Date(b.schedule_at).getTime())
+      .map((tournament) => ({
+        tournament,
+        myResponse: participationByTournament.get(tournament.id)?.response ?? "pending",
+      }));
+  }, [tournaments, myParticipations]);
 
   const handleSignOut = async () => {
     try {
@@ -551,6 +702,11 @@ const Index = () => {
         </Button>
         <Button variant="cathedral" size="icon" onClick={() => requireLoginFor("/inbox", "open inbox notifications")} aria-label="Open inbox notifications">
           <Bell className="h-4 w-4" />
+          {user && unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-border bg-highlight px-1.5 text-[10px] font-semibold text-highlight-foreground">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </Button>
 
         {user ? (
@@ -703,6 +859,67 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      <section className="mx-auto max-w-7xl px-6 pb-16 md:px-10">
+        <Card className="bg-card/40">
+          <CardHeader>
+            <CardTitle className="text-3xl">Tournament Dashboard</CardTitle>
+            <p className="text-sm text-muted-foreground">Upcoming and running tournaments with schedule and squad list.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tournamentCards.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending or running tournaments right now.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {tournamentCards.map(({ tournament, myResponse }) => (
+                  <div key={tournament.id} className="rounded border border-border bg-background/40 p-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="font-display text-xl">{tournament.title}</p>
+                      <span className="rounded-full border border-border px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        {tournament.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Schedule: {new Date(tournament.schedule_at).toLocaleString()}</p>
+                    <div className="mt-3 text-sm">
+                      <p className="mb-1 text-muted-foreground">Main Squad</p>
+                      <ul className="space-y-1">
+                        {tournament.squad_main.map((member, index) => (
+                          <li key={`${tournament.id}-main-${index}`} className="rounded border border-border/60 bg-background/30 px-2 py-1">
+                            {member}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {tournament.squad_extra && (
+                      <p className="mt-2 text-sm text-muted-foreground">Extra: {tournament.squad_extra}</p>
+                    )}
+                    {tournament.notes && <p className="mt-2 text-xs text-muted-foreground">Note: {tournament.notes}</p>}
+                    {user && (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Your status: <span className="font-semibold text-foreground">{myResponse}</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-16 md:px-10">
+        <Card className="bg-card/40">
+          <CardHeader>
+            <CardTitle className="text-3xl">Market Place</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded border border-border bg-background/40 p-10 text-center">
+              <p className="font-display text-4xl text-highlight">Coming Soon</p>
+              <p className="mt-2 text-sm text-muted-foreground">Exclusive esports drops and team items are on the way.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
         <Card className="bg-card/40">

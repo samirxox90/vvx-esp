@@ -267,6 +267,83 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_participations: {
+        Row: {
+          id: string
+          invited_at: string
+          reject_reason: string | null
+          responded_at: string | null
+          response: string
+          tournament_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          reject_reason?: string | null
+          responded_at?: string | null
+          response?: string
+          tournament_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          reject_reason?: string | null
+          responded_at?: string | null
+          response?: string
+          tournament_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_participations_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          schedule_at: string
+          squad_extra: string | null
+          squad_main: string[]
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          schedule_at: string
+          squad_extra?: string | null
+          squad_main?: string[]
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          schedule_at?: string
+          squad_extra?: string | null
+          squad_main?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -280,6 +357,10 @@ export type Database = {
           email_confirmed_at: string
           user_id: string
         }[]
+      }
+      admin_send_tournament_invites: {
+        Args: { _message?: string; _title?: string; _tournament_id: string }
+        Returns: number
       }
       forward_report_to_player: {
         Args: { _message: string; _recipient_email: string; _report_id: string }

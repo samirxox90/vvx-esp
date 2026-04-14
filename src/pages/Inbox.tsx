@@ -39,6 +39,26 @@ interface ReportItem {
   } | null;
 }
 
+interface Tournament {
+  id: string;
+  title: string;
+  schedule_at: string;
+  status: "pending" | "running" | "completed";
+  squad_main: string[];
+  squad_extra: string | null;
+  notes: string | null;
+}
+
+interface TournamentParticipation {
+  id: string;
+  tournament_id: string;
+  user_id: string;
+  response: "pending" | "accepted" | "rejected";
+  reject_reason: string | null;
+  responded_at: string | null;
+  tournament: Tournament | null;
+}
+
 const notificationSchema = z.object({
   audience: z.enum(["single", "all_verified_users", "team_members_only"]),
   recipientEmail: z.string().trim().optional(),
@@ -69,6 +89,10 @@ const allowlistSchema = z.object({
   email: z.string().trim().email("Email is invalid"),
 });
 
+const participationRejectSchema = z.object({
+  reason: z.string().trim().min(4, "Reject reason is required").max(300, "Reason is too long"),
+});
+
 const Inbox = () => {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
@@ -76,6 +100,8 @@ const Inbox = () => {
   const [notifications, setNotifications] = useState<InboxNotification[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [allowlistEmails, setAllowlistEmails] = useState<string[]>([]);
+  const [tournamentParticipations, setTournamentParticipations] = useState<TournamentParticipation[]>([]);
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
 
   const [recipientEmail, setRecipientEmail] = useState("");
   const [notificationAudience, setNotificationAudience] = useState<NotificationAudience>("single");
@@ -109,6 +135,11 @@ const Inbox = () => {
       const db = supabase as any;
 
       const notificationQuery = db.from("inbox_notifications").select("*").order("created_at", { ascending: false });
+      const participationQuery = db
+        .from("tournament_participations")
+        .select("id, tournament_id, user_id, response, reject_reason, responded_at, tournaments(id, title, schedule_at, status, squad_main, squad_extra, notes)")
+        .eq("user_id", user.id)
+        .order("invited_at", { ascending: false });
 
       const adminQueries = isAdmin
         ? [
@@ -120,14 +151,22 @@ const Inbox = () => {
           ]
         : [];
 
-      const results = await Promise.all([notificationQuery, ...adminQueries]);
+      const results = await Promise.all([notificationQuery, participationQuery, ...adminQueries]);
       const notificationResult = results[0];
+      const participationResult = results[1];
       if (notificationResult.error) throw notificationResult.error;
+      if (participationResult.error) throw participationResult.error;
       setNotifications((notificationResult.data ?? []) as InboxNotification[]);
 
+      const normalizedParticipations = ((participationResult.data ?? []) as any[]).map((item) => ({
+        ...item,
+        tournament: Array.isArray(item.tournaments) ? item.tournaments[0] ?? null : item.tournaments ?? null,
+      }));
+      setTournamentParticipations(normalizedParticipations as TournamentParticipation[]);
+
       if (isAdmin) {
-        const allowlistResult = results[1];
-        const reportsResult = results[2];
+        const allowlistResult = results[2];
+        const reportsResult = results[3];
 
         if (allowlistResult?.error) throw allowlistResult.error;
         if (reportsResult?.error) throw reportsResult.error;
@@ -150,15 +189,23 @@ const Inbox = () => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
+    const notificationChannel = supabase
       .channel(`inbox-live-${user.id}-${isAdmin ? "admin" : "user"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "inbox_notifications" }, () => {
         void loadData(false);
       })
       .subscribe();
 
+    const participationChannel = supabase
+      .channel(`inbox-participation-live-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tournament_participations", filter: `user_id=eq.${user.id}` }, () => {
+        void loadData(false);
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(notificationChannel);
+      supabase.removeChannel(participationChannel);
     };
   }, [user?.id, isAdmin]);
 
@@ -291,6 +338,49 @@ const Inbox = () => {
     }
   };
 
+  const respondToTournamentInvite = async (participationId: string, response: "accepted" | "rejected") => {
+    const participation = tournamentParticipations.find((item) => item.id === participationId);
+    if (!participation) return;
+
+    let rejectReason: string | null = null;
+
+    if (response === "rejected") {
+      const parsed = participationRejectSchema.safeParse({ reason: rejectReasons[participationId] ?? "" });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message ?? "Please provide a reject reason");
+        return;
+      }
+      rejectReason = parsed.data.reason;
+    }
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const { error } = await db
+        .from("tournament_participations")
+        .update({
+          response,
+          reject_reason: rejectReason,
+        })
+        .eq("id", participationId)
+        .eq("user_id", user?.id ?? "");
+
+      if (error) throw error;
+
+      if (response === "accepted") {
+        toast.success("You accepted tournament participation");
+      } else {
+        toast.success("You rejected tournament participation");
+      }
+
+      await loadData();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to update participation");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading || pageLoading) return null;
 
   return (
@@ -308,6 +398,76 @@ const Inbox = () => {
             <CardTitle className="text-2xl">Inbox Notifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {tournamentParticipations.length > 0 && (
+              <div className="mb-4 space-y-3 rounded border border-border bg-background/40 p-3">
+                <p className="font-display text-lg">Tournament Invites</p>
+                {tournamentParticipations.map((participation) => {
+                  const tournament = participation.tournament;
+                  if (!tournament) return null;
+
+                  return (
+                    <div key={participation.id} className="rounded border border-border bg-background/60 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="font-semibold">{tournament.title}</p>
+                        <Badge variant={participation.response === "accepted" ? "secondary" : participation.response === "rejected" ? "destructive" : "outline"}>
+                          {participation.response}
+                        </Badge>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">Time: {new Date(tournament.schedule_at).toLocaleString()}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">Status: {tournament.status}</p>
+
+                      {(participation.response === "accepted" || tournament.status === "running") && (
+                        <div className="mt-2 rounded border border-border/70 bg-background/40 p-2 text-xs text-muted-foreground">
+                          <p className="mb-1 font-medium text-foreground">Squad List</p>
+                          <ul className="space-y-1">
+                            {tournament.squad_main.map((member, index) => (
+                              <li key={`${participation.id}-main-${index}`}>Main {index + 1}: {member}</li>
+                            ))}
+                            {tournament.squad_extra && <li>Extra: {tournament.squad_extra}</li>}
+                          </ul>
+                        </div>
+                      )}
+
+                      {participation.response === "pending" && (
+                        <div className="mt-3 space-y-2">
+                          <Textarea
+                            placeholder="Reason if you reject"
+                            value={rejectReasons[participation.id] ?? ""}
+                            onChange={(event) =>
+                              setRejectReasons((prev) => ({
+                                ...prev,
+                                [participation.id]: event.target.value,
+                              }))
+                            }
+                            disabled={saving}
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="hero" size="sm" onClick={() => respondToTournamentInvite(participation.id, "accepted")} disabled={saving}>
+                              Accept
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => respondToTournamentInvite(participation.id, "rejected")}
+                              disabled={saving}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {participation.response === "rejected" && participation.reject_reason && (
+                        <p className="mt-2 text-xs text-muted-foreground">Your reason: {participation.reject_reason}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {notifications.length === 0 ? (
               <p className="text-sm text-muted-foreground">No notifications yet.</p>
             ) : (
