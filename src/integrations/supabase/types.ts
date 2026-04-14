@@ -349,6 +349,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_tournament_participation_results: {
+        Args: { _tournament_id?: string }
+        Returns: {
+          invited_at: string
+          is_allowlisted: boolean
+          is_team_member: boolean
+          reject_reason: string
+          responded_at: string
+          response: string
+          schedule_at: string
+          tournament_id: string
+          tournament_title: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       admin_list_registered_users: {
         Args: never
         Returns: {
@@ -360,6 +376,15 @@ export type Database = {
       }
       admin_send_tournament_invites: {
         Args: { _message?: string; _title?: string; _tournament_id: string }
+        Returns: number
+      }
+      admin_send_tournament_invites_to_selected_emails: {
+        Args: {
+          _emails: string[]
+          _message?: string
+          _title?: string
+          _tournament_id: string
+        }
         Returns: number
       }
       forward_report_to_player: {

@@ -790,6 +790,53 @@ const Index = () => {
         <p className="max-w-3xl text-center text-muted-foreground">{content.team_description}</p>
       </section>
 
+      <section className="mx-auto max-w-7xl px-6 pb-16 pt-16 md:px-10 md:pt-20">
+        <Card className="bg-card/40">
+          <CardHeader>
+            <CardTitle className="text-3xl">Tournament Details</CardTitle>
+            <p className="text-sm text-muted-foreground">Upcoming and running tournaments with schedule and squad list.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tournamentCards.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending or running tournaments right now.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {tournamentCards.map(({ tournament, myResponse }) => (
+                  <div key={tournament.id} className="rounded border border-border bg-background/40 p-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="font-display text-xl">{tournament.title}</p>
+                      <span className="rounded-full border border-border px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        {tournament.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Schedule: {new Date(tournament.schedule_at).toLocaleString()}</p>
+                    <div className="mt-3 text-sm">
+                      <p className="mb-1 text-muted-foreground">Main Squad</p>
+                      <ul className="space-y-1">
+                        {tournament.squad_main.map((member, index) => (
+                          <li key={`${tournament.id}-main-${index}`} className="rounded border border-border/60 bg-background/30 px-2 py-1">
+                            {member}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {tournament.squad_extra && (
+                      <p className="mt-2 text-sm text-muted-foreground">Extra: {tournament.squad_extra}</p>
+                    )}
+                    {tournament.notes && <p className="mt-2 text-xs text-muted-foreground">Note: {tournament.notes}</p>}
+                    {user && (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Your status: <span className="font-semibold text-foreground">{myResponse}</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
       {awardEntries.length > 0 && (
         <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 md:px-10 md:pt-20">
           <Card className="mb-8 bg-card/40">
@@ -863,59 +910,15 @@ const Index = () => {
       <section className="mx-auto max-w-7xl px-6 pb-16 md:px-10">
         <Card className="bg-card/40">
           <CardHeader>
-            <CardTitle className="text-3xl">Tournament Dashboard</CardTitle>
-            <p className="text-sm text-muted-foreground">Upcoming and running tournaments with schedule and squad list.</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {tournamentCards.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No pending or running tournaments right now.</p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {tournamentCards.map(({ tournament, myResponse }) => (
-                  <div key={tournament.id} className="rounded border border-border bg-background/40 p-4">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="font-display text-xl">{tournament.title}</p>
-                      <span className="rounded-full border border-border px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        {tournament.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Schedule: {new Date(tournament.schedule_at).toLocaleString()}</p>
-                    <div className="mt-3 text-sm">
-                      <p className="mb-1 text-muted-foreground">Main Squad</p>
-                      <ul className="space-y-1">
-                        {tournament.squad_main.map((member, index) => (
-                          <li key={`${tournament.id}-main-${index}`} className="rounded border border-border/60 bg-background/30 px-2 py-1">
-                            {member}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {tournament.squad_extra && (
-                      <p className="mt-2 text-sm text-muted-foreground">Extra: {tournament.squad_extra}</p>
-                    )}
-                    {tournament.notes && <p className="mt-2 text-xs text-muted-foreground">Note: {tournament.notes}</p>}
-                    {user && (
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Your status: <span className="font-semibold text-foreground">{myResponse}</span>
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-16 md:px-10">
-        <Card className="bg-card/40">
-          <CardHeader>
             <CardTitle className="text-3xl">Market Place</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="rounded border border-border bg-background/40 p-10 text-center">
               <p className="font-display text-4xl text-highlight">Coming Soon</p>
-              <p className="mt-2 text-sm text-muted-foreground">Exclusive esports drops and team items are on the way.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Exclusive esports drops and big changes is cooking, stay with uss.</p>
+            </div>
+            <div className="flex justify-center">
+              <Button type="button" variant="hero" onClick={() => navigate("/market")}>Open Market Place</Button>
             </div>
           </CardContent>
         </Card>

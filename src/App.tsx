@@ -10,6 +10,7 @@ import Admin from "./pages/Admin.tsx";
 import Apply from "./pages/Apply.tsx";
 import Report from "./pages/Report.tsx";
 import Inbox from "./pages/Inbox.tsx";
+import Market from "./pages/Market.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const AppRoutes = () => {
       <Route path="/apply" element={user ? <Apply /> : <Navigate to="/login" replace />} />
       <Route path="/report" element={user ? <Report /> : <Navigate to="/login" replace />} />
       <Route path="/inbox" element={user ? <Inbox /> : <Navigate to="/login" replace />} />
+      <Route path="/market" element={<Market />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

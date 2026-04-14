@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CalendarClock, Check, Megaphone, Save, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -139,6 +140,22 @@ interface TournamentFormState {
   notes: string;
 }
 
+interface TournamentParticipationResult {
+  tournament_id: string;
+  tournament_title: string;
+  schedule_at: string;
+  user_id: string;
+  user_email: string | null;
+  invited_at: string;
+  response: "pending" | "accepted" | "rejected";
+  reject_reason: string | null;
+  responded_at: string | null;
+  is_allowlisted: boolean;
+  is_team_member: boolean;
+}
+
+type InviteTarget = "all_team_members" | "selected_emails";
+
 const roleOptions = ["Rusher", "Supporter", "Sniper", "Assaulter", "Boomber", "IGL/Leader", "Entry Fragger"];
 
 const createEmptyTournamentForm = (): TournamentFormState => ({
@@ -251,13 +268,31 @@ const Admin = () => {
   const [tournamentForm, setTournamentForm] = useState<TournamentFormState>(createEmptyTournamentForm());
   const [inviteTitle, setInviteTitle] = useState("Tournament Invite");
   const [inviteMessage, setInviteMessage] = useState("Do you want to play our next tournament?");
+  const [inviteTarget, setInviteTarget] = useState<InviteTarget>("all_team_members");
+  const [allowlistEmails, setAllowlistEmails] = useState<string[]>([]);
+  const [selectedInviteEmails, setSelectedInviteEmails] = useState<string[]>([]);
+  const [participationResults, setParticipationResults] = useState<TournamentParticipationResult[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
   const [uploadingPlayerImage, setUploadingPlayerImage] = useState(false);
   const [uploadingLeaderboardImage, setUploadingLeaderboardImage] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
+  const [participationResultsLoading, setParticipationResultsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const selectedTournamentForResults = selectedTournamentId === "__new__" ? null : selectedTournamentId;
+
+  const eligibleInviteEmails = useMemo(() => {
+    const allowlisted = new Set(allowlistEmails.map((email) => email.toLowerCase()));
+    const acceptedUserIds = new Set(applications.filter((item) => item.status === "accepted").map((item) => item.user_id));
+
+    return registeredUsers
+      .filter((item) => item.email && item.email_confirmed_at && acceptedUserIds.has(item.user_id))
+      .map((item) => item.email!.toLowerCase())
+      .filter((email) => allowlisted.has(email))
+      .sort((a, b) => a.localeCompare(b));
+  }, [allowlistEmails, applications, registeredUsers]);
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
   const awardsHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, awardsSectionFields);
@@ -279,9 +314,18 @@ const Admin = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers(), loadTournaments()]);
+      void Promise.all([loadContent(), loadPlayers(), loadApplications(), loadRegisteredUsers(), loadAllowlistEmails(), loadTournaments()]);
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void loadParticipationResults(selectedTournamentForResults);
+  }, [isAdmin, selectedTournamentForResults]);
+
+  useEffect(() => {
+    setSelectedInviteEmails((prev) => prev.filter((email) => eligibleInviteEmails.includes(email)));
+  }, [eligibleInviteEmails]);
 
   useEffect(() => {
     if (selectedTournamentId === "__new__") {
@@ -414,6 +458,35 @@ const Admin = () => {
     }
   };
 
+  const loadAllowlistEmails = async () => {
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.from("notification_allowlist").select("email").order("email", { ascending: true });
+      if (error) throw error;
+      setAllowlistEmails(((data ?? []) as Array<{ email: string }>).map((item) => item.email));
+    } catch (error) {
+      console.error("Error loading allowlist:", error);
+      toast.error("Failed to load allowlisted emails");
+    }
+  };
+
+  const loadParticipationResults = async (tournamentId: string | null) => {
+    setParticipationResultsLoading(true);
+    try {
+      const db = supabase as any;
+      const { data, error } = await db.rpc("admin_get_tournament_participation_results", {
+        _tournament_id: tournamentId,
+      });
+      if (error) throw error;
+      setParticipationResults((data ?? []) as TournamentParticipationResult[]);
+    } catch (error) {
+      console.error("Error loading participation results:", error);
+      toast.error(error instanceof Error ? `Failed to load participation results: ${error.message}` : "Failed to load participation results");
+    } finally {
+      setParticipationResultsLoading(false);
+    }
+  };
+
   const loadTournaments = async () => {
     setTournamentsLoading(true);
     try {
@@ -522,13 +595,31 @@ const Admin = () => {
     setSaving(true);
     try {
       const db = supabase as any;
-      const { data, error } = await db.rpc("admin_send_tournament_invites", {
-        _tournament_id: tournamentId,
-        _title: inviteTitle,
-        _message: inviteMessage,
-      });
-      if (error) throw error;
-      toast.success(`Invites sent to ${Number(data ?? 0)} team member(s)`);
+      if (inviteTarget === "selected_emails") {
+        if (selectedInviteEmails.length === 0) {
+          toast.error("Select at least one allowlisted team member email");
+          return;
+        }
+
+        const { data, error } = await db.rpc("admin_send_tournament_invites_to_selected_emails", {
+          _tournament_id: tournamentId,
+          _emails: selectedInviteEmails,
+          _title: inviteTitle,
+          _message: inviteMessage,
+        });
+        if (error) throw error;
+        toast.success(`Invites sent to ${Number(data ?? 0)} selected member(s)`);
+      } else {
+        const { data, error } = await db.rpc("admin_send_tournament_invites", {
+          _tournament_id: tournamentId,
+          _title: inviteTitle,
+          _message: inviteMessage,
+        });
+        if (error) throw error;
+        toast.success(`Invites sent to ${Number(data ?? 0)} team member(s)`);
+      }
+
+      await loadParticipationResults(tournamentId);
     } catch (error) {
       console.error("Error sending tournament invites:", error);
       toast.error(error instanceof Error ? `Failed to send invites: ${error.message}` : "Failed to send invites");
@@ -1006,6 +1097,63 @@ const Admin = () => {
                 <Label>Notification Title</Label>
                 <Input value={inviteTitle} onChange={(e) => setInviteTitle(e.target.value)} />
               </div>
+
+              <div className="space-y-2">
+                <Label>Invite Target</Label>
+                <Select value={inviteTarget} onValueChange={(value) => setInviteTarget(value as InviteTarget)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_team_members">All Team Members</SelectItem>
+                    <SelectItem value="selected_emails">Selected Allowed Emails</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {inviteTarget === "selected_emails" && (
+                <div className="space-y-2 rounded border border-border bg-background/30 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs">Allowed team member emails ({selectedInviteEmails.length}/{eligibleInviteEmails.length})</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSelectedInviteEmails((prev) =>
+                          prev.length === eligibleInviteEmails.length ? [] : eligibleInviteEmails,
+                        )
+                      }
+                    >
+                      {selectedInviteEmails.length === eligibleInviteEmails.length ? "Clear All" : "Select All"}
+                    </Button>
+                  </div>
+                  {eligibleInviteEmails.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No eligible allowlisted team members found.</p>
+                  ) : (
+                    <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                      {eligibleInviteEmails.map((email) => {
+                        const isChecked = selectedInviteEmails.includes(email);
+                        return (
+                          <label key={email} className="flex cursor-pointer items-center gap-2 rounded border border-border/60 px-2 py-1.5 text-xs">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) =>
+                                setSelectedInviteEmails((prev) => {
+                                  if (checked) return [...prev, email];
+                                  return prev.filter((item) => item !== email);
+                                })
+                              }
+                            />
+                            <span>{email}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Notification Message</Label>
                 <Textarea value={inviteMessage} onChange={(e) => setInviteMessage(e.target.value)} />
@@ -1033,6 +1181,39 @@ const Admin = () => {
                         </p>
                       </div>
                     ))
+                )}
+              </div>
+
+              <div className="space-y-2 pt-3">
+                <h4 className="font-display text-lg">Participation Results</h4>
+                <p className="text-xs text-muted-foreground">Detailed invite outcomes for {selectedTournamentForResults ? "selected tournament" : "all tournaments"}.</p>
+                {participationResultsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading participation results...</p>
+                ) : participationResults.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No participation records yet.</p>
+                ) : (
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {participationResults.map((item) => (
+                      <div key={`${item.tournament_id}-${item.user_id}-${item.invited_at}`} className="rounded border border-border px-3 py-2 text-xs">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="font-medium">{item.user_email ?? "Unknown email"}</p>
+                          <Badge
+                            variant={
+                              item.response === "accepted" ? "secondary" : item.response === "rejected" ? "destructive" : "outline"
+                            }
+                          >
+                            {item.response}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground">Tournament: {item.tournament_title}</p>
+                        <p className="text-muted-foreground">Schedule: {new Date(item.schedule_at).toLocaleString()}</p>
+                        <p className="text-muted-foreground">Invited: {new Date(item.invited_at).toLocaleString()}</p>
+                        <p className="text-muted-foreground">Responded: {item.responded_at ? new Date(item.responded_at).toLocaleString() : "Pending"}</p>
+                        <p className="text-muted-foreground">Allowlisted: {item.is_allowlisted ? "Yes" : "No"} • Team Member: {item.is_team_member ? "Yes" : "No"}</p>
+                        {item.reject_reason && <p className="text-muted-foreground">Reject Reason: {item.reject_reason}</p>}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
