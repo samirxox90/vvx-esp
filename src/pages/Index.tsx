@@ -22,6 +22,7 @@ import {
   FileWarning,
   Bell,
   CirclePlay,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -694,6 +695,12 @@ const Index = () => {
       </header>
 
       <header className="fixed right-2 top-2 z-50 flex max-w-[calc(100vw-1rem)] flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-background/70 p-2 backdrop-blur-sm md:right-6 md:top-6 md:max-w-none md:flex-nowrap md:border-0 md:bg-transparent md:p-0">
+        <Button variant="cathedral" size="sm" onClick={() => navigate("/market")} className="relative pr-10" aria-label="Open market place">
+          <Store className="mr-1 h-4 w-4" /> Market
+          <span className="absolute -right-1 -top-1 inline-flex items-center rounded-full border border-highlight/30 bg-highlight px-2 py-0.5 text-[10px] font-semibold text-highlight-foreground shadow-cathedral animate-pulse">
+            New
+          </span>
+        </Button>
         <Button variant="cathedral" size="icon" onClick={() => requireLoginFor("/apply", "apply for the team")} aria-label="Apply to join team">
           <UserPlus className="h-4 w-4" />
         </Button>
@@ -906,23 +913,6 @@ const Index = () => {
           </div>
         </section>
       )}
-
-      <section className="mx-auto max-w-7xl px-6 pb-16 md:px-10">
-        <Card className="bg-card/40">
-          <CardHeader>
-            <CardTitle className="text-3xl">Market Place</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded border border-border bg-background/40 p-10 text-center">
-              <p className="font-display text-4xl text-highlight">Coming Soon</p>
-              <p className="mt-2 text-sm text-muted-foreground">Exclusive esports drops and big changes is cooking, stay with uss.</p>
-            </div>
-            <div className="flex justify-center">
-              <Button type="button" variant="hero" onClick={() => navigate("/market")}>Open Market Place</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
         <Card className="bg-card/40">
