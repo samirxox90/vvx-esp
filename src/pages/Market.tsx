@@ -20,7 +20,7 @@ const Market = () => {
           <CardContent>
             <div className="rounded border border-border bg-background/40 p-10 text-center">
               <p className="font-display text-5xl text-highlight">Coming Soon</p>
-              <p className="mt-3 text-sm text-muted-foreground">Exclusive esports drops and big changes is cooking, stay with uss.</p>
+              <p className="mt-3 text-sm text-muted-foreground">Exclusive esports drops and big chances is cooking, stay with uss.</p>
             </div>
           </CardContent>
         </Card>

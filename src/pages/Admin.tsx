@@ -271,6 +271,8 @@ const Admin = () => {
   const [inviteTarget, setInviteTarget] = useState<InviteTarget>("all_team_members");
   const [allowlistEmails, setAllowlistEmails] = useState<string[]>([]);
   const [selectedInviteEmails, setSelectedInviteEmails] = useState<string[]>([]);
+  const [selectedAllowlistCandidateEmails, setSelectedAllowlistCandidateEmails] = useState<string[]>([]);
+  const [manualAllowlistEmail, setManualAllowlistEmail] = useState("");
   const [participationResults, setParticipationResults] = useState<TournamentParticipationResult[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [ratingInput, setRatingInput] = useState("1.00");
@@ -293,6 +295,20 @@ const Admin = () => {
       .filter((email) => allowlisted.has(email))
       .sort((a, b) => a.localeCompare(b));
   }, [allowlistEmails, applications, registeredUsers]);
+
+  const verifiedRegisteredEmails = useMemo(
+    () =>
+      registeredUsers
+        .filter((item) => item.email && item.email_confirmed_at)
+        .map((item) => item.email!.toLowerCase())
+        .sort((a, b) => a.localeCompare(b)),
+    [registeredUsers],
+  );
+
+  const addableRegisteredEmails = useMemo(
+    () => verifiedRegisteredEmails.filter((email) => !allowlistEmails.some((allowedEmail) => allowedEmail.toLowerCase() === email)),
+    [allowlistEmails, verifiedRegisteredEmails],
+  );
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
   const awardsHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, awardsSectionFields);
@@ -326,6 +342,10 @@ const Admin = () => {
   useEffect(() => {
     setSelectedInviteEmails((prev) => prev.filter((email) => eligibleInviteEmails.includes(email)));
   }, [eligibleInviteEmails]);
+
+  useEffect(() => {
+    setSelectedAllowlistCandidateEmails((prev) => prev.filter((email) => addableRegisteredEmails.includes(email)));
+  }, [addableRegisteredEmails]);
 
   useEffect(() => {
     if (selectedTournamentId === "__new__") {
@@ -595,6 +615,14 @@ const Admin = () => {
     setSaving(true);
     try {
       const db = supabase as any;
+      const selectedTournament = tournaments.find((item) => item.id === tournamentId) ?? null;
+      const scheduleText = selectedTournament ? new Date(selectedTournament.schedule_at).toLocaleString() : "Not set";
+      const mainSquadText = selectedTournament?.squad_main?.filter(Boolean).join(", ") || "Not set";
+      const extraSquadText = selectedTournament?.squad_extra?.trim() || "Not set";
+      const defaultMessage = "Do you want to play our next tournament?";
+      const baseMessage = inviteMessage.trim() || defaultMessage;
+      const finalMessage = `${baseMessage}\n\nTournament: \"${selectedTournament?.title ?? "Tournament"}\"\nSchedule: ${scheduleText}\nMain Squad: ${mainSquadText}\nExtra: ${extraSquadText}`;
+
       if (inviteTarget === "selected_emails") {
         if (selectedInviteEmails.length === 0) {
           toast.error("Select at least one allowlisted team member email");
@@ -605,24 +633,80 @@ const Admin = () => {
           _tournament_id: tournamentId,
           _emails: selectedInviteEmails,
           _title: inviteTitle,
-          _message: inviteMessage,
+          _message: finalMessage,
         });
         if (error) throw error;
-        toast.success(`Invites sent to ${Number(data ?? 0)} selected member(s)`);
+        const sentCount = Number(data ?? 0);
+        if (sentCount === 0) {
+          toast.error("No eligible selected members received invite");
+          return;
+        }
+        toast.success(`Invites sent to ${sentCount} selected member(s)`);
       } else {
         const { data, error } = await db.rpc("admin_send_tournament_invites", {
           _tournament_id: tournamentId,
           _title: inviteTitle,
-          _message: inviteMessage,
+          _message: finalMessage,
         });
         if (error) throw error;
-        toast.success(`Invites sent to ${Number(data ?? 0)} team member(s)`);
+        const sentCount = Number(data ?? 0);
+        if (sentCount === 0) {
+          toast.error("No eligible team members found for invite");
+          return;
+        }
+        toast.success(`Invites sent to ${sentCount} team member(s)`);
       }
 
       await loadParticipationResults(tournamentId);
     } catch (error) {
       console.error("Error sending tournament invites:", error);
       toast.error(error instanceof Error ? `Failed to send invites: ${error.message}` : "Failed to send invites");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addRegisteredEmailsToAllowlist = async () => {
+    const normalizedManualEmail = manualAllowlistEmail.trim().toLowerCase();
+    const selectedSet = new Set(selectedAllowlistCandidateEmails);
+
+    if (normalizedManualEmail) {
+      selectedSet.add(normalizedManualEmail);
+    }
+
+    const selectedEmails = Array.from(selectedSet).filter((email) => verifiedRegisteredEmails.includes(email));
+
+    if (selectedEmails.length === 0) {
+      toast.error("Select at least one verified registered email");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const db = supabase as any;
+      const alreadyAllowed = new Set(allowlistEmails.map((email) => email.toLowerCase()));
+      const emailsToInsert = selectedEmails.filter((email) => !alreadyAllowed.has(email));
+
+      if (emailsToInsert.length === 0) {
+        toast.error("Selected emails are already in allowed list");
+        return;
+      }
+
+      const { error } = await db.from("notification_allowlist").insert(
+        emailsToInsert.map((email) => ({
+          email,
+          added_by: user?.id ?? null,
+        })),
+      );
+      if (error) throw error;
+
+      setManualAllowlistEmail("");
+      setSelectedAllowlistCandidateEmails([]);
+      await loadAllowlistEmails();
+      toast.success(`Added ${emailsToInsert.length} email(s) to allowed list`);
+    } catch (error) {
+      console.error("Error adding allowlist emails:", error);
+      toast.error(error instanceof Error ? `Failed to add emails: ${error.message}` : "Failed to add emails");
     } finally {
       setSaving(false);
     }
@@ -1092,6 +1176,68 @@ const Admin = () => {
             <div className="space-y-3 rounded border border-border bg-background/40 p-4">
               <h3 className="font-display text-xl">Send Participation Invite</h3>
               <p className="text-xs text-muted-foreground">Targets verified, allowlisted team members with accepted applications.</p>
+
+              <div className="space-y-2 rounded border border-border bg-background/30 p-3">
+                <Label className="text-xs">Add Registered User Email To Allowed List</Label>
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Input
+                    value={manualAllowlistEmail}
+                    onChange={(e) => setManualAllowlistEmail(e.target.value)}
+                    placeholder="Enter verified registered email"
+                  />
+                  <Button type="button" variant="outline" onClick={addRegisteredEmailsToAllowlist} disabled={saving}>
+                    Add Email
+                  </Button>
+                </div>
+
+                {addableRegisteredEmails.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">All verified registered users are already in allowed list.</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Select verified registered users ({selectedAllowlistCandidateEmails.length}/{addableRegisteredEmails.length})
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setSelectedAllowlistCandidateEmails((prev) =>
+                            prev.length === addableRegisteredEmails.length ? [] : addableRegisteredEmails,
+                          )
+                        }
+                      >
+                        {selectedAllowlistCandidateEmails.length === addableRegisteredEmails.length ? "Clear All" : "Select All"}
+                      </Button>
+                    </div>
+
+                    <div className="max-h-36 space-y-2 overflow-y-auto pr-1">
+                      {addableRegisteredEmails.map((email) => {
+                        const isChecked = selectedAllowlistCandidateEmails.includes(email);
+                        return (
+                          <label key={`allowlist-${email}`} className="flex cursor-pointer items-center gap-2 rounded border border-border/60 px-2 py-1.5 text-xs">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) =>
+                                setSelectedAllowlistCandidateEmails((prev) => {
+                                  if (checked) return [...prev, email];
+                                  return prev.filter((item) => item !== email);
+                                })
+                              }
+                            />
+                            <span>{email}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <Button type="button" variant="hero" onClick={addRegisteredEmailsToAllowlist} disabled={saving}>
+                      Add Selected To Allowed List
+                    </Button>
+                  </>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label>Notification Title</Label>
