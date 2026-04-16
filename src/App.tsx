@@ -11,7 +11,10 @@ import Apply from "./pages/Apply.tsx";
 import Report from "./pages/Report.tsx";
 import Inbox from "./pages/Inbox.tsx";
 import Market from "./pages/Market.tsx";
+import TermsPolicy from "./pages/TermsPolicy.tsx";
+import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import SiteFooter from "./components/SiteFooter";
 
 const queryClient = new QueryClient();
 
@@ -34,7 +37,9 @@ const AppRoutes = () => {
       <Route path="/apply" element={user ? <Apply /> : <Navigate to="/login" replace />} />
       <Route path="/report" element={user ? <Report /> : <Navigate to="/login" replace />} />
       <Route path="/inbox" element={user ? <Inbox /> : <Navigate to="/login" replace />} />
-      <Route path="/market" element={<Market />} />
+      <Route path="/market-place" element={<Market />} />
+      <Route path="/terms-policy" element={<TermsPolicy />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -47,7 +52,12 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppRoutes />
+        <div className="flex min-h-screen flex-col">
+          <div className="flex-1">
+            <AppRoutes />
+          </div>
+          <SiteFooter />
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
