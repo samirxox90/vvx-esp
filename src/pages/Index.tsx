@@ -695,7 +695,7 @@ const Index = () => {
       </header>
 
       <header className="fixed right-2 top-2 z-50 flex max-w-[calc(100vw-1rem)] flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-background/70 p-2 backdrop-blur-sm md:right-6 md:top-6 md:max-w-none md:flex-nowrap md:border-0 md:bg-transparent md:p-0">
-        <Button variant="cathedral" size="sm" onClick={() => navigate("/market")} className="relative pr-10" aria-label="Open market place">
+        <Button variant="cathedral" size="sm" onClick={() => navigate("/market-place")} className="relative pr-10" aria-label="Open market place">
           <Store className="mr-1 h-4 w-4" /> Market
           <span className="absolute -right-1 -top-1 inline-flex items-center rounded-full border border-highlight/30 bg-highlight px-2 py-0.5 text-[10px] font-semibold text-highlight-foreground shadow-cathedral animate-pulse">
             New

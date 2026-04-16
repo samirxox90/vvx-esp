@@ -287,27 +287,26 @@ const Admin = () => {
 
   const eligibleInviteEmails = useMemo(() => {
     const allowlisted = new Set(allowlistEmails.map((email) => email.toLowerCase()));
-    const acceptedUserIds = new Set(applications.filter((item) => item.status === "accepted").map((item) => item.user_id));
 
     return registeredUsers
-      .filter((item) => item.email && item.email_confirmed_at && acceptedUserIds.has(item.user_id))
+      .filter((item) => item.email)
       .map((item) => item.email!.toLowerCase())
       .filter((email) => allowlisted.has(email))
       .sort((a, b) => a.localeCompare(b));
-  }, [allowlistEmails, applications, registeredUsers]);
+  }, [allowlistEmails, registeredUsers]);
 
-  const verifiedRegisteredEmails = useMemo(
+  const registeredEmails = useMemo(
     () =>
       registeredUsers
-        .filter((item) => item.email && item.email_confirmed_at)
+        .filter((item) => item.email)
         .map((item) => item.email!.toLowerCase())
         .sort((a, b) => a.localeCompare(b)),
     [registeredUsers],
   );
 
   const addableRegisteredEmails = useMemo(
-    () => verifiedRegisteredEmails.filter((email) => !allowlistEmails.some((allowedEmail) => allowedEmail.toLowerCase() === email)),
-    [allowlistEmails, verifiedRegisteredEmails],
+    () => registeredEmails.filter((email) => !allowlistEmails.some((allowedEmail) => allowedEmail.toLowerCase() === email)),
+    [allowlistEmails, registeredEmails],
   );
 
   const heroHasUnsavedChanges = hasUnsavedSectionChanges(content, savedContent, heroSectionFields);
@@ -625,7 +624,7 @@ const Admin = () => {
 
       if (inviteTarget === "selected_emails") {
         if (selectedInviteEmails.length === 0) {
-          toast.error("Select at least one allowlisted team member email");
+          toast.error("Select at least one allowlisted registered email");
           return;
         }
 
@@ -638,20 +637,33 @@ const Admin = () => {
         if (error) throw error;
         const sentCount = Number(data ?? 0);
         if (sentCount === 0) {
-          toast.error("No eligible selected members received invite");
+          toast.error("No selected recipients received invite");
           return;
         }
-        toast.success(`Invites sent to ${sentCount} selected member(s)`);
+        toast.success(`Invites sent to ${sentCount} selected recipient(s)`);
       } else {
-        const { data, error } = await db.rpc("admin_send_tournament_invites", {
+        const acceptedTeamMemberUserIds = new Set(
+          applications.filter((item) => item.status === "accepted").map((item) => item.user_id),
+        );
+        const teamMemberEmails = registeredUsers
+          .filter((item) => item.email && acceptedTeamMemberUserIds.has(item.user_id))
+          .map((item) => item.email!.toLowerCase());
+
+        if (teamMemberEmails.length === 0) {
+          toast.error("No accepted team members found for invite");
+          return;
+        }
+
+        const { data, error } = await db.rpc("admin_send_tournament_invites_to_selected_emails", {
           _tournament_id: tournamentId,
+          _emails: teamMemberEmails,
           _title: inviteTitle,
           _message: finalMessage,
         });
         if (error) throw error;
         const sentCount = Number(data ?? 0);
         if (sentCount === 0) {
-          toast.error("No eligible team members found for invite");
+          toast.error("No team members received invite");
           return;
         }
         toast.success(`Invites sent to ${sentCount} team member(s)`);
@@ -674,10 +686,10 @@ const Admin = () => {
       selectedSet.add(normalizedManualEmail);
     }
 
-    const selectedEmails = Array.from(selectedSet).filter((email) => verifiedRegisteredEmails.includes(email));
+    const selectedEmails = Array.from(selectedSet).filter((email) => registeredEmails.includes(email));
 
     if (selectedEmails.length === 0) {
-      toast.error("Select at least one verified registered email");
+      toast.error("Select at least one registered email");
       return;
     }
 
@@ -1175,7 +1187,7 @@ const Admin = () => {
 
             <div className="space-y-3 rounded border border-border bg-background/40 p-4">
               <h3 className="font-display text-xl">Send Participation Invite</h3>
-              <p className="text-xs text-muted-foreground">Targets verified, allowlisted team members with accepted applications.</p>
+              <p className="text-xs text-muted-foreground">Add registered emails, quote scheduled tournament details, and send participation invites.</p>
 
               <div className="space-y-2 rounded border border-border bg-background/30 p-3">
                 <Label className="text-xs">Add Registered User Email To Allowed List</Label>
@@ -1183,7 +1195,7 @@ const Admin = () => {
                   <Input
                     value={manualAllowlistEmail}
                     onChange={(e) => setManualAllowlistEmail(e.target.value)}
-                    placeholder="Enter verified registered email"
+                    placeholder="Enter registered email"
                   />
                   <Button type="button" variant="outline" onClick={addRegisteredEmailsToAllowlist} disabled={saving}>
                     Add Email
@@ -1196,7 +1208,7 @@ const Admin = () => {
                   <>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs text-muted-foreground">
-                        Select verified registered users ({selectedAllowlistCandidateEmails.length}/{addableRegisteredEmails.length})
+                        Select registered users ({selectedAllowlistCandidateEmails.length}/{addableRegisteredEmails.length})
                       </p>
                       <Button
                         type="button"
@@ -1275,7 +1287,7 @@ const Admin = () => {
                     </Button>
                   </div>
                   {eligibleInviteEmails.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No eligible allowlisted team members found.</p>
+                    <p className="text-xs text-muted-foreground">No allowlisted registered emails found.</p>
                   ) : (
                     <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
                       {eligibleInviteEmails.map((email) => {
